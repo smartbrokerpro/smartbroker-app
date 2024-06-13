@@ -1,7 +1,7 @@
 // components/Header.js
 
 import React, { useState } from 'react';
-import { AppBar, Box, Toolbar, IconButton, Typography, Button, Menu, MenuItem, Link as MuiLink } from '@mui/material';
+import { AppBar, Box, Stack, Toolbar, IconButton, Typography, Button, Menu, MenuItem, Link as MuiLink } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import FacebookIcon from '@mui/icons-material/Facebook';
@@ -53,14 +53,16 @@ const Header = () => {
           <Button color="inherit" href="#">Contact</Button>
         </Box>
         <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-          <MuiLink href="https://facebook.com" color="inherit" target="_blank" rel="noopener">
-            <FacebookIcon />
-          </MuiLink>
-          <MuiLink href="https://instagram.com" color="inherit" target="_blank" rel="noopener">
-            <InstagramIcon />
-          </MuiLink>
+          <Stack direction="row" spacing={1}>
+            <IconButton href="https://facebook.com" target="_blank" color="inherit">
+              <FacebookIcon />
+            </IconButton>
+            <IconButton href="https://instagram.com" target="_blank" color="inherit">
+              <InstagramIcon />
+            </IconButton>
+            <ColorModeSwitcher />
+          </Stack>
         </Box>
-        <ColorModeSwitcher />
         <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
           <IconButton
             size="large"

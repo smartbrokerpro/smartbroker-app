@@ -1,34 +1,28 @@
 // hooks/useColorMode.js
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { lightTheme, darkTheme } from '../utils/theme';
+import { useState, useEffect, createContext, useContext } from 'react';
 
-const ColorModeContext = createContext({ toggleColorMode: () => {} });
-
-export const useColorMode = () => useContext(ColorModeContext);
+const ColorModeContext = createContext();
 
 export const ColorModeProvider = ({ children }) => {
   const [mode, setMode] = useState('light');
 
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-      },
-    }),
-    []
-  );
+  useEffect(() => {
+    const savedMode = localStorage.getItem('theme') || 'light';
+    setMode(savedMode);
+  }, []);
 
-  const theme = useMemo(() => (mode === 'light' ? lightTheme : darkTheme), [mode]);
+  const toggleColorMode = () => {
+    const newMode = mode === 'light' ? 'dark' : 'light';
+    setMode(newMode);
+    localStorage.setItem('theme', newMode);
+  };
 
   return (
-    <ColorModeContext.Provider value={colorMode}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </ThemeProvider>
+    <ColorModeContext.Provider value={{ mode, toggleColorMode }}>
+      {children}
     </ColorModeContext.Provider>
   );
 };
+
+export const useColorMode = () => useContext(ColorModeContext);
