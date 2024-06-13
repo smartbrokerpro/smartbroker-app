@@ -1,5 +1,5 @@
 {
-  "name": "smartbroker-app",
+  "name": "sbapp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "framer-motion": "^11.2.6",
+    "mongodb": "^6.6.2",
+    "next": "14.2.3",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.4"
+    "react-icons": "^5.2.1"
   }
 }
