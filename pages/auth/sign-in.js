@@ -7,6 +7,8 @@ import { useRouter } from 'next/router';
 import { Box, Button, TextField, Checkbox, FormControlLabel, Typography, Container, Divider } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
+import Image from 'next/image';
+import { Textarea } from '@chakra-ui/react';
 
 export default function SignIn() {
   const { data: session, status } = useSession();
@@ -20,6 +22,14 @@ export default function SignIn() {
 
   return (
     <Container maxWidth="sm" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Image
+            src="/images/logo.png"
+            alt="Logo"
+            width={90}
+            height={90}
+            layout="fixed"
+            style={{ cursor: 'pointer', textAlign:'center', marginBottom:'2rem' }}
+          />
       <Box
         sx={{
           padding: 4,
@@ -29,8 +39,12 @@ export default function SignIn() {
           width: '100%',
         }}
       >
+        {/* <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', p: 2 }}> */}
+          
+        {/* </Box> */}
         <Typography variant="h4" component="h1" align="center" gutterBottom>
-          ¡Hola!
+        
+        ¡Hola!
         </Typography>
         <Typography variant="subtitle1" align="center" gutterBottom>
           Para continuar, inicia sesión
