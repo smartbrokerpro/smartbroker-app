@@ -1,95 +1,53 @@
-import Image from "next/image";
-import styles from "/styles/page.module.css";
+// pages/index.js
+
+import React from 'react';
+import { useSession } from 'next-auth/react';
+import { Container, Typography, Box, Button } from '@mui/material';
+import Login from "@/components/Login";
+import { signOut } from 'next-auth/react';
 
 export default function Home() {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    return (
+      <Container maxWidth="sm" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <Typography variant="h6">Cargando...</Typography>
+      </Container>
+    );
+  }
+
+  if (!session) {
+    return <Login />;
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}> index.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+    <Container maxWidth="sm" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Box
+        sx={{
+          padding: 4,
+          borderRadius: 2,
+          boxShadow: 3,
+          backgroundColor: 'background.paper',
+          width: '100%',
+        }}
+      >
+        <Typography variant="h4" component="h1" align="center" gutterBottom>
+          ¡Bienvenido {session.user.name}!
+        </Typography>
+        <Typography variant="body1" align="center" gutterBottom>
+          Estás logueado como {session.user.email}.
+        </Typography>
+        <Button
+          variant="contained"
+          color="secondary"
+          fullWidth
+          onClick={() => signOut()}
+          sx={{ mt: 2 }}
         >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+          Cerrar sesión
+        </Button>
+      </Box>
+    </Container>
   );
 }

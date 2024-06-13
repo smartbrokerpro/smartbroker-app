@@ -1,20 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
-  Image,
-  Badge,
-  Text,
-  SimpleGrid,
-  Heading,
-  Spinner,
-  Center,
-} from '@chakra-ui/react';
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  Typography,
+  Chip,
+  CircularProgress,
+  Container,
+  useTheme,
+  Button
+} from '@mui/material';
+
+const fallbackImage = '/images/fallback.jpg'; // Asegúrate de que la ruta sea correcta y la imagen exista en esa ruta
 
 export default function MoviesPage() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const theme = useTheme();
 
   useEffect(() => {
     async function fetchMovies() {
@@ -31,60 +37,60 @@ export default function MoviesPage() {
 
   if (loading) {
     return (
-      <Center height="100vh">
-        <Spinner size="xl" />
-      </Center>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: theme.palette.background.default }}>
+        <CircularProgress size={60} />
+      </Box>
     );
   }
 
   return (
-    <Box p={4}>
-      <Heading as="h1" mb={6}>Movies</Heading>
-      <SimpleGrid columns={[1, 2, 3]} spacing={10}>
+    <Container maxWidth={false} sx={{ py: 4, px:0, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
+      <Typography variant="h4" component="h1" gutterBottom color="primary">Movies</Typography>
+      <Grid container spacing={4}>
         {movies.map(movie => (
-          <Box
-            key={movie._id}
-            maxW="sm"
-            borderWidth="1px"
-            borderRadius="lg"
-            overflow="hidden"
-          >
-            <Image src={movie.poster} alt={movie.title} />
-
-            <Box p="6">
-              <Box display="flex" alignItems="baseline">
-                <Badge borderRadius="full" px="2" colorScheme="teal">
-                  {movie.year}
-                </Badge>
-                <Box
-                  color="gray.500"
-                  fontWeight="semibold"
-                  letterSpacing="wide"
-                  fontSize="xs"
-                  textTransform="uppercase"
-                  ml="2"
-                >
-                  {movie.genres.join(', ')}
+          <Grid item key={movie._id} xs={12} sm={6} md={4}>
+            <Card sx={{ bgcolor: theme.palette.background.paper }}>
+              <CardMedia
+                component="div"
+                sx={{
+                  height: 140,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundImage: `url(${movie.poster}), url(${fallbackImage})`,
+                }}
+                title={movie.title}
+              />
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
+                  <Chip label={movie.year} color="primary" size="small" />
+                  <Typography
+                    variant="body2"
+                    sx={{ ml: 1, color: theme.palette.text.secondary }}
+                  >
+                    {movie.genres.join(', ')}
+                  </Typography>
                 </Box>
-              </Box>
-
-              <Box
-                mt="1"
-                fontWeight="semibold"
-                as="h4"
-                lineHeight="tight"
-                isTruncated
-              >
-                {movie.title}
-              </Box>
-
-              <Text mt={2} noOfLines={3}>
-                {movie.plot}
-              </Text>
-            </Box>
-          </Box>
+                <Typography
+                  variant="h6"
+                  component="h2"
+                  sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: theme.palette.text.primary }}
+                >
+                  {movie.title}
+                </Typography>
+                <Typography variant="body2" noWrap sx={{ color: theme.palette.text.secondary }}>
+                  {movie.plot}
+                </Typography>
+                <Button color="secondary" variant="contained" sx={{mt:2, mr:2}}>
+                  Previsualizar
+                </Button>
+                <Button color="third" variant="contained" sx={{mt:2}}>
+                  Ver Detalles
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </SimpleGrid>
-    </Box>
+      </Grid>
+    </Container>
   );
 }

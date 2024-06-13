@@ -1,19 +1,18 @@
-import { IconButton, useColorMode } from '@chakra-ui/react';
-import { FaSun, FaMoon } from 'react-icons/fa';
+// components/ColorModeSwitcher.js
 
-const ColorModeSwitcher = (props) => {
-  const { colorMode, toggleColorMode } = useColorMode();
-  const icon = colorMode === 'light' ? <FaMoon /> : <FaSun />;
+import React from 'react';
+import { IconButton, useTheme } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { useColorMode } from '../hooks/useColorMode';
+
+const ColorModeSwitcher = () => {
+  const { toggleColorMode } = useColorMode();
+  const theme = useTheme();
 
   return (
-    <IconButton
-      icon={icon}
-      isRound="true"
-      size="md"
-      alignSelf="center"
-      onClick={toggleColorMode}
-      {...props}
-    />
+    <IconButton onClick={toggleColorMode} color="inherit">
+      {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+    </IconButton>
   );
 };
 

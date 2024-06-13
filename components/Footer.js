@@ -1,25 +1,33 @@
-import { Box, Container, Stack, Text, Link, HStack } from '@chakra-ui/react';
-import { FaFacebook, FaInstagram } from 'react-icons/fa';
+// components/Footer.js
+
+import React from 'react';
+import { Box, Container, Stack, Typography, Link, IconButton, useTheme } from '@mui/material';
+import FacebookIcon from '@mui/icons-material/Facebook';
+import InstagramIcon from '@mui/icons-material/Instagram';
 import ColorModeSwitcher from './ColorModeSwitcher';
 
 const Footer = () => {
+  const theme = useTheme();
+
   return (
-    <Box bg="gray.800" color="white" transition="background-color 0.8s ease, color 0.8s ease">
-      <Container as={Stack} maxW="6xl" py={4}>
-        <HStack spacing={6} justify="center">
-          <Link href="https://facebook.com" isExternal>
-            <FaFacebook />
-          </Link>
-          <Link href="https://instagram.com" isExternal>
-            <FaInstagram />
-          </Link>
-          <ColorModeSwitcher />
-        </HStack>
-        <Text textAlign="center">© 2023 Smart Broker. All rights reserved.</Text>
-        <HStack spacing={6} justify="center">
-          <Link href="#">Terms & Conditions</Link>
-          <Link href="#">Privacy Policy</Link>
-        </HStack>
+    <Box sx={{ bgcolor: theme.palette.background.paper, color: theme.palette.text.primary, transition: 'background-color 0.8s ease, color 0.8s ease', py: 4 }}>
+      <Container maxWidth="lg">
+        <Stack spacing={2} justifyContent="center" alignItems="center">
+          <Stack direction="row" spacing={1}>
+            <IconButton href="https://facebook.com" target="_blank" color="inherit">
+              <FacebookIcon />
+            </IconButton>
+            <IconButton href="https://instagram.com" target="_blank" color="inherit">
+              <InstagramIcon />
+            </IconButton>
+            <ColorModeSwitcher />
+          </Stack>
+          <Typography variant="body2" align="center">© 2023 Smart Broker. All rights reserved.</Typography>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Link href="#" color="inherit">Terms & Conditions</Link>
+            <Link href="#" color="inherit">Privacy Policy</Link>
+          </Stack>
+        </Stack>
       </Container>
     </Box>
   );

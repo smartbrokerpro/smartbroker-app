@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Box, Input, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Spinner, Center } from '@chakra-ui/react';
+import React, { useEffect, useState } from 'react';
+import { Box, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, Container } from '@mui/material';
 
 export default function MoviesTablePage() {
   const [movies, setMovies] = useState([]);
@@ -31,41 +31,42 @@ export default function MoviesTablePage() {
   }, [searchTerm, movies]);
 
   return (
-    <Box p={4}>
-      <Input
+    <Container sx={{ p: 4 }}>
+      <TextField
+        fullWidth
         placeholder="Buscar..."
-        mb={4}
+        margin="normal"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
       {loading ? (
-        <Center>
-          <Spinner size="xl" />
-        </Center>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress size={60} />
+        </Box>
       ) : (
         <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Title</Th>
-                <Th>Year</Th>
-                <Th>Genres</Th>
-                <Th>Plot</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Year</TableCell>
+                <TableCell>Genres</TableCell>
+                <TableCell>Plot</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {filteredMovies.map(movie => (
-                <Tr key={movie._id}>
-                  <Td>{movie.title ? `${movie.title.substring(0, 30)}...` : ''}</Td>
-                  <Td>{movie.year}</Td>
-                  <Td>{movie.genres ? movie.genres.join(', ') : ''}</Td>
-                  <Td>{movie.plot ? `${movie.plot.substring(0, 25)}...` : ''}</Td>
-                </Tr>
+                <TableRow key={movie._id}>
+                  <TableCell>{movie.title ? `${movie.title.substring(0, 30)}...` : ''}</TableCell>
+                  <TableCell>{movie.year}</TableCell>
+                  <TableCell>{movie.genres ? movie.genres.join(', ') : ''}</TableCell>
+                  <TableCell>{movie.plot ? `${movie.plot.substring(0, 25)}...` : ''}</TableCell>
+                </TableRow>
               ))}
-            </Tbody>
+            </TableBody>
           </Table>
         </TableContainer>
       )}
-    </Box>
+    </Container>
   );
 }

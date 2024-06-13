@@ -1,52 +1,93 @@
-import { Box, Flex, HStack, IconButton, useDisclosure, Stack, Link, useColorModeValue } from '@chakra-ui/react';
-import { FaBars, FaTimes, FaFacebook, FaInstagram } from 'react-icons/fa';
+// components/Header.js
+
+import React, { useState } from 'react';
+import { AppBar, Box, Toolbar, IconButton, Typography, Button, Menu, MenuItem, Link as MuiLink } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
+import FacebookIcon from '@mui/icons-material/Facebook';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import { useTheme } from '@mui/material/styles';
 import ColorModeSwitcher from './ColorModeSwitcher';
+import Image from 'next/image';
 
 const Header = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const bg = useColorModeValue('gray.800', 'gray.900');
-  const color = useColorModeValue('white', 'gray.100');
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const isMenuOpen = Boolean(anchorEl);
 
   return (
-    <Box bg={bg} color={color} px={4} transition="background-color 0.8s ease, color 0.8s ease">
-      <Flex h={16} alignItems="center" justifyContent="space-between">
-        <Box fontWeight="bold">Smart Broker</Box>
-        <HStack as="nav" spacing={4} display={{ base: 'none', md: 'flex' }}>
-          <Link href="/">Home</Link>
-          <Link href="/movies-table">Tabla</Link>
-          <Link href="/movies">Tarjetas</Link>
-          <Link href="#">Services</Link>
-          <Link href="#">Contact</Link>
-        </HStack>
-        <HStack spacing={6} alignItems="center">
-          <Link href="https://facebook.com" isExternal display={{ base: 'none', md: 'block' }}>
-            <FaFacebook />
-          </Link>
-          <Link href="https://instagram.com" isExternal display={{ base: 'none', md: 'block' }}>
-            <FaInstagram />
-          </Link>
-          <ColorModeSwitcher />
-          <Box display={{ base: 'flex', md: 'none' }} alignItems="center">
-            <IconButton
-              size="md"
-              icon={isOpen ? <FaTimes /> : <FaBars />}
-              aria-label="Open Menu"
-              onClick={isOpen ? onClose : onOpen}
-            />
-          </Box>
-        </HStack>
-      </Flex>
-      {isOpen ? (
-        <Box pb={4} display={{ md: 'none' }}>
-          <Stack as="nav" spacing={4}>
-            <Link href="#">Home</Link>
-            <Link href="#">About</Link>
-            <Link href="#">Services</Link>
-            <Link href="#">Contact</Link>
-          </Stack>
+    <AppBar
+      position="static"
+      sx={{
+        backgroundColor: theme.palette.background.header,
+        color: theme.palette.text.primary,
+        px: 4,
+        transition: 'background-color 0.8s ease, color 0.8s ease',
+      }}
+    >
+      <Toolbar>
+        <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Image
+            src="/images/logo.png"
+            alt="Logo"
+            layout="intrinsic"
+            width={65} 
+            height={65}
+            style={{ maxHeight: '100%', width: 'auto' }}
+          />
         </Box>
-      ) : null}
-    </Box>
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 1 }}>
+          <Button color="inherit" href="/">Home</Button>
+          <Button color="inherit" href="/movies-table">Tabla</Button>
+          <Button color="inherit" href="/movies">Tarjetas</Button>
+          <Button color="inherit" href="#">Services</Button>
+          <Button color="inherit" href="#">Contact</Button>
+        </Box>
+        <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <MuiLink href="https://facebook.com" color="inherit" target="_blank" rel="noopener">
+            <FacebookIcon />
+          </MuiLink>
+          <MuiLink href="https://instagram.com" color="inherit" target="_blank" rel="noopener">
+            <InstagramIcon />
+          </MuiLink>
+        </Box>
+        <ColorModeSwitcher />
+        <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+          <IconButton
+            size="large"
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={handleMenuOpen}
+          >
+            {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
+          </IconButton>
+        </Box>
+      </Toolbar>
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        keepMounted
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        open={isMenuOpen}
+        onClose={handleMenuClose}
+        sx={{ display: { xs: 'block', md: 'none' } }}
+      >
+        <MenuItem onClick={handleMenuClose} component={MuiLink} href="/">Home</MenuItem>
+        <MenuItem onClick={handleMenuClose} component={MuiLink} href="#">About</MenuItem>
+        <MenuItem onClick={handleMenuClose} component={MuiLink} href="#">Services</MenuItem>
+        <MenuItem onClick={handleMenuClose} component={MuiLink} href="#">Contact</MenuItem>
+      </Menu>
+    </AppBar>
   );
 };
 

@@ -1,17 +1,23 @@
-import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
-import theme from '../lib/theme';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import '../styles/globals.css';
+// pages/_app.js
+
+import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ColorModeProvider } from '../hooks/useColorMode';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import '@/styles/globals.css';
+import { lightTheme, darkTheme } from '../utils/theme';
 
 function MyApp({ Component, pageProps }) {
   return (
-    <ChakraProvider theme={theme}>
-      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <Header />
-      <Component {...pageProps} />
-      <Footer />
-    </ChakraProvider>
+    <SessionProvider session={pageProps.session}>
+      <ColorModeProvider>
+        <CssBaseline />
+        <Header />
+        <Component {...pageProps} />
+        <Footer />
+      </ColorModeProvider>
+    </SessionProvider>
   );
 }
 
