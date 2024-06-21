@@ -1,5 +1,3 @@
-// middleware.js
-
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 
@@ -14,12 +12,13 @@ export async function middleware(req) {
   // 1) It's a request for next-auth session & provider fetching
   // 2) It's a request to a public file like favicon.ico
   // 3) It's a request to the login page
-  // 4) It's a request for static files like js, css, etc.
+  // 4) It's a request for static files like js, css, images, etc.
   if (
     pathname.includes("/api/auth") ||
     pathname === "/auth/sign-in" ||
     pathname.startsWith("/_next/") ||
-    pathname.includes("/favicon.ico")
+    pathname.includes("/favicon.ico") ||
+    pathname.startsWith("/images/") // Permitir acceso a imágenes
   ) {
     console.log("Allowing access to auth routes, sign-in page, or static files");
     return NextResponse.next();

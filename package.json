@@ -15,12 +15,22 @@
     "@emotion/styled": "^11.11.5",
     "@mui/icons-material": "^5.15.20",
     "@mui/material": "^5.15.20",
+    "@react-google-maps/api": "^2.19.3",
+    "dotenv": "^16.4.5",
     "framer-motion": "^11.2.6",
+    "i18next": "^23.11.5",
+    "i18next-browser-languagedetector": "^8.0.0",
+    "i18next-http-backend": "^2.5.2",
+    "intl": "^1.2.5",
     "mongodb": "^6.6.2",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
+    "next-i18next": "^15.3.0",
+    "openai": "^4.51.0",
     "react": "^18",
     "react-dom": "^18",
-    "react-icons": "^5.2.1"
+    "react-i18next": "^14.1.2",
+    "react-icons": "^5.2.1",
+    "react-intl": "^6.6.8"
   }
 }

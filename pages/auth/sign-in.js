@@ -8,7 +8,6 @@ import { Box, Button, TextField, Checkbox, FormControlLabel, Typography, Contain
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import Image from 'next/image';
-import { Textarea } from '@chakra-ui/react';
 
 export default function SignIn() {
   const { data: session, status } = useSession();

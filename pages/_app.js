@@ -1,40 +1,34 @@
 // pages/_app.js
-
 import { useState } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { ColorModeProvider, useColorMode } from '../hooks/useColorMode';
 import Sidebar from '@/components/Sidebar';
+import RightSidebar from '@/components/RightSidebar';
 import '@/styles/globals.css';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useRouter } from 'next/router';
+import { appWithTranslation } from 'next-i18next';
+import { i18n } from '../next-i18next.config.mjs';
 
 function AppContent({ Component, pageProps }) {
   const { mode } = useColorMode();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Determinar si estamos en la página de inicio de sesión
   const isLoginPage = router.pathname === '/auth/sign-in';
 
   return (
     <ThemeProvider theme={mode === 'light' ? lightTheme : darkTheme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'row', minHeight: '100vh', width: '100%' }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
         {!isLoginPage && <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            transition: 'margin 0.3s',
-            // marginLeft: !isLoginPage && collapsed ? '60px' : '240px',
-            p: 3,
-            width: '100%',
-            overflowX: 'hidden',
-          }}
-        >
-          <Component {...pageProps} />
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+          <Box sx={{ flexGrow: 1, overflow: 'auto', padding: 3 }}>
+            <Component {...pageProps} />
+          </Box>
         </Box>
+        {!isLoginPage && <RightSidebar />}
       </Box>
     </ThemeProvider>
   );
@@ -50,4 +44,4 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   );
 }
 
-export default MyApp;
+export default appWithTranslation(MyApp, { i18n });

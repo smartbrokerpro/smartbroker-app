@@ -1,3 +1,5 @@
+// /pages/projects/index.js
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -14,29 +16,31 @@ import {
   Button,
   TextField
 } from '@mui/material';
+import { useRouter } from 'next/router';
 
 const fallbackImage = '/images/fallback.jpg'; // Asegúrate de que la ruta sea correcta y la imagen exista en esa ruta
 
-export default function MoviesPage() {
-  const [movies, setMovies] = useState([]);
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatePrompt, setUpdatePrompt] = useState('');
   const theme = useTheme();
+  const router = useRouter();
 
   useEffect(() => {
-    fetchMovies();
+    fetchProjects();
   }, []);
 
-  async function fetchMovies() {
-    const response = await fetch('/api/movies');
+  async function fetchProjects() {
+    const response = await fetch('/api/projects');
     const data = await response.json();
     if (data.success) {
-      setMovies(data.data);
+      setProjects(data.data);
     }
     setLoading(false);
   }
 
-  async function handleUpdateMovie() {
+  async function handleUpdateProject() {
     try {
       const response = await fetch('/api/gpt', {
         method: 'POST',
@@ -50,12 +54,12 @@ export default function MoviesPage() {
 
       if (response.ok) {
         console.log('Update successful:', result);
-        fetchMovies(); // Refetch movies to update the list
+        fetchProjects(); // Refetch projects to update the list
       } else {
         console.error('Update failed:', result);
       }
     } catch (error) {
-      console.error('Error updating movie:', error);
+      console.error('Error updating project:', error);
     }
   }
 
@@ -69,21 +73,21 @@ export default function MoviesPage() {
 
   return (
     <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
-      <Typography variant="h4" component="h1" gutterBottom color="primary">Movies</Typography>
+      <Typography variant="h4" component="h1" gutterBottom color="primary">Projects</Typography>
       <TextField
         fullWidth
         variant="outlined"
-        placeholder="Escribe tu solicitud para actualizar una película"
+        placeholder="Escribe tu solicitud para actualizar un proyecto"
         value={updatePrompt}
         onChange={(e) => setUpdatePrompt(e.target.value)}
         sx={{ mb: 2 }}
       />
-      <Button variant="contained" color="primary" onClick={handleUpdateMovie}>
-        Actualizar Película
+      <Button variant="contained" color="primary" onClick={handleUpdateProject}>
+        Actualizar Proyecto
       </Button>
       <Grid container spacing={4} sx={{ mt: 4 }}>
-        {movies.map(movie => (
-          <Grid item key={movie._id} xs={12} sm={6} md={4}>
+        {projects.map(project => (
+          <Grid item key={project._id} xs={12} sm={6} md={4}>
             <Card sx={{ bgcolor: theme.palette.background.paper }}>
               <CardMedia
                 component="div"
@@ -91,18 +95,18 @@ export default function MoviesPage() {
                   height: 140,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
-                  backgroundImage: `url(${movie.poster}), url(${fallbackImage})`,
+                  backgroundImage: `url(${fallbackImage})`,
                 }}
-                title={movie.title}
+                title={project.name}
               />
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                  <Chip label={movie.year} color="primary" size="small"  />
+                  <Chip label={project.name} color="primary" size="small" />
                   <Typography
                     variant="body2"
                     sx={{ ml: 1, color: theme.palette.text.secondary }}
                   >
-                    {movie.genres.join(', ')}
+                    {project.address}
                   </Typography>
                 </Box>
                 <Typography
@@ -110,13 +114,14 @@ export default function MoviesPage() {
                   component="h2"
                   sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: theme.palette.text.primary }}
                 >
-                  {movie.title}
+                  {project.name}
                 </Typography>
                 <Typography variant="body2" noWrap sx={{ color: theme.palette.text.secondary }}>
-                  {movie.plot}
+                  {project.location?.lat && `Latitud: ${project.location.lat}`}
+                  {project.location?.lng && `Longitud: ${project.location.lng}`}
                 </Typography>
-                <Button color="primary" variant="contained" sx={{ my: 2 }}>
-                  Ver Detalles
+                <Button color="primary" variant="contained" sx={{ my: 2 }} onClick={() => router.push(`/projects/${project._id}/stock`)}>
+                  Ver Stock
                 </Button>
               </CardContent>
             </Card>
