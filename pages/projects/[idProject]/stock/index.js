@@ -20,8 +20,20 @@ import {
 } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import ProjectDetailsCard from '@/components/ProjectDetailsCard';
-import { formatCurrency } from '@/utils/format';
+import { cleanNumberFormat, formatCurrency } from '@/utils/format';
+import numeral from 'numeral';
 
+  
+  const NumberFormatter = ({ value, unit, prependUnit = false, decimals = 2 }) => {
+    const formattedValue = value;
+  
+    return (
+      <div>
+        {prependUnit ? `${unit} ${formattedValue}` : `${formattedValue} ${unit}`}
+      </div>
+    );
+  };
+    
 export default function ProjectStockPage() {
   const router = useRouter();
   const { idProject } = router.query;
@@ -155,7 +167,7 @@ export default function ProjectStockPage() {
                 />
               </TableCell>
               <TableCell>Orientación</TableCell>
-              <TableCell>
+              <TableCell  align='center'>
                 Precio
                 <TableSortLabel
                   active={orderBy === 'current_list_price'}
@@ -166,7 +178,7 @@ export default function ProjectStockPage() {
               </TableCell>
               <TableCell>Bono Pie</TableCell>
               <TableCell>Descuento</TableCell>
-              <TableCell>Expandir</TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -176,9 +188,9 @@ export default function ProjectStockPage() {
                   <TableCell>{item.apartment}</TableCell>
                   <TableCell>{item.typology}</TableCell>
                   <TableCell>{item.orientation}</TableCell>
-                  <TableCell>{formatCurrency(parseFloat(item.current_list_price.replace(/\./g, '').replace(',', '.')), 'es-CL', 'UF')}</TableCell>
-                  <TableCell>{item.down_payment_bonus}</TableCell>
-                  <TableCell>{item.discount}</TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.current_list_price} unit={'UF'} prependUnit={false} decimals={0} /></TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.down_payment_bonus} unit={'%'} prependUnit={false} decimals={0} /></TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} /></TableCell>
                   <TableCell>
                     <IconButton onClick={() => toggleRowExpand(item._id)}>
                       {expandedRows[item._id] ? <ExpandLess /> : <ExpandMore />}

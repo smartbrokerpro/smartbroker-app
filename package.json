@@ -13,9 +13,13 @@
     "@chakra-ui/react": "^2.8.2",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
+    "@lottielab/lottie-player": "^1.0.3",
     "@mui/icons-material": "^5.15.20",
     "@mui/material": "^5.15.20",
     "@react-google-maps/api": "^2.19.3",
+    "chart.js": "^4.4.3",
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "d3-funnel": "^2.1.1",
     "dotenv": "^16.4.5",
     "framer-motion": "^11.2.6",
     "i18next": "^23.11.5",
@@ -23,14 +27,18 @@
     "i18next-http-backend": "^2.5.2",
     "intl": "^1.2.5",
     "mongodb": "^6.6.2",
+    "mongoose": "^8.4.3",
     "next": "14.2.3",
     "next-auth": "^4.24.7",
     "next-i18next": "^15.3.0",
+    "numeral": "^2.0.6",
     "openai": "^4.51.0",
     "react": "^18",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
     "react-i18next": "^14.1.2",
     "react-icons": "^5.2.1",
-    "react-intl": "^6.6.8"
+    "react-intl": "^6.6.8",
+    "typewriter-effect": "^2.21.0"
   }
 }

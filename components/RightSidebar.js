@@ -43,10 +43,11 @@ const RightSidebar = () => {
       variant="permanent"
       anchor="right"
       sx={{
-        width: 240,
+        width: 140,
         flexShrink: 0,
+        background:'transparent',
         [`& .MuiDrawer-paper`]: {
-          width: 240,
+          width: 140,
           boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
@@ -58,7 +59,7 @@ const RightSidebar = () => {
       <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2 }}>
         <Grid container spacing={2}>
           {summaryCards.map((card, index) => (
-            <Grid item xs={6} key={index}>
+            <Grid item xs={12} key={index}>
               <Card sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
                 <CardContent sx={{ padding: 1, textAlign: 'center', flexGrow: 1 }}>
                   <Typography variant="h6" fontWeight="bold" gutterBottom>{card.value}</Typography>

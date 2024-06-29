@@ -22,7 +22,7 @@ export default function SignIn() {
   return (
     <Container maxWidth="sm" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <Image
-            src="/images/logo.png"
+            src="/images/smarty.svg"
             alt="Logo"
             width={90}
             height={90}

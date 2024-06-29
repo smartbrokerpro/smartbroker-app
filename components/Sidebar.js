@@ -28,20 +28,24 @@ const Sidebar = ({ collapsed, onToggle }) => {
     <Drawer
       variant="permanent"
       sx={{
+        borderRadius:'0!important',
         width: collapsed ? 60 : 240,
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: {
           width: collapsed ? 60 : 240,
           boxSizing: 'border-box',
           transition: 'width 0.3s',
-          backgroundColor:'black',
+          backgroundColor:'#0E0F10',
           color:'white',
+          borderRadius:'0rem'
 
         },
         [`& .MuiListItemIcon-root`]: {
           color:'white',
-        }
+        },
+        transition:'.3s all'
       }}
+      
     >
       <Box>
         <List>

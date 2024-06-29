@@ -65,6 +65,14 @@ const commonComponents = {
           backgroundColor: '#7BBF2A',
           color: 'white',
         },
+        '&.MuiChip-outlinedPrimary': {
+          borderColor: '#5DA010',
+          color: '#5DA010',
+        },
+        '&.MuiChip-outlinedSecondary': {
+          borderColor: '#7BBF2A',
+          color: '#7BBF2A',
+        },
       },
     },
   },
@@ -72,6 +80,33 @@ const commonComponents = {
     styleOverrides: {
       root: {
         borderRadius: '1rem', // Bordes redondeados para Paper
+      },
+    },
+  },
+  MuiAccordion: {
+    styleOverrides: {
+      root: {
+        marginBottom: '8px', // Espacio entre acordeones
+        '&:before': {
+          display: 'none', // Eliminar la línea antes del acordeón
+        },
+        borderRadius: '1rem', // Bordes redondeados para acordeones
+      },
+    },
+  },
+  MuiAccordionSummary: {
+    styleOverrides: {
+      root: {
+        minHeight: '40px', // Altura mínima para acordeones
+        '&.Mui-expanded': {
+          minHeight: '40px',
+        },
+        borderRadius: '8px', // Bordes redondeados para el resumen del acordeón
+      },
+      content: {
+        '&.Mui-expanded': {
+          margin: '12px 0',
+        },
       },
     },
   },
@@ -84,12 +119,30 @@ const commonComponents = {
       },
     },
   },
+  MuiTextField: {
+    styleOverrides: {
+      root: {
+        '& .MuiOutlinedInput-root': {
+          '& fieldset': {
+            borderColor: '#ccc',
+            borderRadius: '1rem',
+          },
+          '&:hover fieldset': {
+            borderColor: '#ccc !important',
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: '#ccc !important',
+          },
+        },
+      },
+    },
+  },
 };
 
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#000000' }, // Verde brillante para el modo claro
+    primary: { main: '#0E0F10' }, // Verde brillante para el modo claro
     secondary: { main: '#A4E844' }, // Verde más claro
     third: { main: '#89DE32' }, // Otro tono de verde
     background: {
@@ -98,7 +151,7 @@ const lightTheme = createTheme({
       header: '#ddd', // Fondo del Header para el modo claro
     },
     text: {
-      primary: '#212121', // Texto negro
+      primary: '#0E0F10', // Texto negro
       secondary: '#757575', // Texto gris oscuro
     },
   },
@@ -107,22 +160,22 @@ const lightTheme = createTheme({
     MuiTypography: {
       styleOverrides: {
         h1: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
         h2: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
         h3: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
         h4: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
         h5: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
         h6: {
-          color: '#212121', // Color de los títulos para el modo claro
+          color: '#0E0F10', // Color de los títulos para el modo claro
         },
       },
     },
@@ -139,9 +192,9 @@ const darkTheme = createTheme({
     secondary: { main: '#7BBF2A' }, // Verde más claro
     third: { main: '#68B21F' }, // Otro tono de verde
     background: {
-      default: '#212121', // Fondo oscuro
+      default: '#0E0F10', // Fondo oscuro
       paper: '#424242', // Papel más oscuro
-      header: '#000000', // Fondo del Header para el modo oscuro
+      header: '#0E0F10', // Fondo del Header para el modo oscuro
     },
     text: {
       primary: '#E0E0E0', // Texto gris claro
