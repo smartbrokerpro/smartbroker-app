@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Box, Typography, CircularProgress, TextareaAutosize, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button, Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Checkbox, FormControlLabel, TextField, InputAdornment } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ExploreIcon from '@mui/icons-material/Explore';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -28,7 +28,7 @@ const examples = [
 const highlightAnalysis = (text) => {
   const keywords = ['promedio', 'superficie', 'precio', 'descuentos', 'orientación', 'ubicación'];
   const numberRegex = /\b\d+([.,]\d+)?\b/g;
-  
+
   let highlightedText = text.replace(numberRegex, (match) => `<strong>${match}</strong>`);
 
   keywords.forEach(keyword => {
@@ -38,6 +38,39 @@ const highlightAnalysis = (text) => {
 
   return highlightedText;
 };
+
+const MemoizedTable = React.memo(({ response, handleOpenModal }) => {
+  return (
+    <TableContainer component={Paper}>
+      <Table size="small" aria-label="simple table" sx={{ '& tbody tr:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
+        <TableHead>
+          <TableRow>
+            {response.result.columns.map((column) => (
+              <TableCell key={column.id} sx={{ px: 1, py: 0.5, textAlign: 'center' }}>{column.label}</TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {response.result.rows.map((row, index) => (
+            <TableRow key={index}>
+              {response.result.columns.map((column) => (
+                <TableCell key={column.id} sx={{ px: 1, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center' }}>
+                  {column.id === 'link' ? (
+                    <Button variant="contained" color="primary" onClick={() => handleOpenModal(row)} size="small">
+                      Ver Unidad
+                    </Button>
+                  ) : (
+                    row[column.id]
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+});
 
 const Chat = () => {
   const [query, setQuery] = useState('');
@@ -129,8 +162,17 @@ const Chat = () => {
     setSelectedUnit(null);
   };
 
+  const memoizedResponse = useMemo(() => response, [response]);
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 2, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', overflow: 'hidden', position: 'relative' }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', overflow: 'hidden', position: 'relative' }}>
       <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
         {showExamples && (
           <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column' }}>
@@ -168,7 +210,7 @@ const Chat = () => {
             </Box>
           </Box>
         )}
-        {response && (
+        {memoizedResponse && memoizedResponse.result.rows.length > 0 && (
           <>
             {includeAnalysis && showTypewriter && (
               <Typography
@@ -188,34 +230,7 @@ const Chat = () => {
                 />
               </Typography>
             )}
-            <TableContainer component={Paper}>
-              <Table size="small" aria-label="simple table" sx={{ '& tbody tr:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
-                <TableHead>
-                  <TableRow>
-                    {response.result.columns.map((column) => (
-                      <TableCell key={column.id} sx={{ px: 1, py: 0.5 }}>{column.label}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {response.result.rows.map((row, index) => (
-                    <TableRow key={index}>
-                      {response.result.columns.map((column) => (
-                        <TableCell key={column.id} sx={{ px: 1, py: 0.5 }}>
-                          {column.id === 'link' ? (
-                            <Button variant="contained" color="primary" onClick={() => handleOpenModal(row)} size="small">
-                              Ver Unidad
-                            </Button>
-                          ) : (
-                            row[column.id]
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <MemoizedTable response={memoizedResponse} handleOpenModal={handleOpenModal} />
             {tokensUsed && (
               <Typography variant="subtitle1" color="textSecondary">
                 Tokens utilizados: {tokensUsed}
@@ -223,41 +238,71 @@ const Chat = () => {
             )}
           </>
         )}
+        {(!loading && (!response || response.result.rows.length === 0) && !showExamples) && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', p: 2 }}>
+            <Box sx={{ width: '150px', height: '260px', overflowY: 'hidden', transform: 'scale(0.5)', transformOrigin:'50% 90%' }}>
+              <Lottie src="/anim/smarty.json" autoplay />
+            </Box>
+            <Typography variant="p" sx={{ mt: 0 }}>No se encontraron resultados, <br />intenta una nueva búsqueda</Typography>
+          </Box>
+        )}
+        {isClient && loading && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', p: 2 }}>
+            <Box sx={{ width: '150px', height: '260px', overflowY: 'hidden', transform: 'scale(0.5)', transformOrigin:'50% 90%' }}>
+              <Lottie src="/anim/smarty.json" autoplay />
+            </Box>
+            <Typography variant="p" sx={{ mt: 0 }}>Buscando...</Typography>
+          </Box>
+        )}
       </Box>
       <Box sx={{ position: 'sticky', bottom: 0, width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff' }}>
         <form onSubmit={handleSubmit} >
           <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <TextareaAutosize
+            <TextField
               aria-label="Describe lo que buscas"
+              placeholder="Describe lo que buscas"
+              multiline
               minRows={1}
               maxRows={6}
-              placeholder="Describe lo que buscas"
-              style={{ width: '100%', padding: '8px', paddingLeft: '1rem', paddingRight: '1rem', marginRight: '8px', boxSizing: 'border-box', borderRadius: '1rem', fontSize: '.8rem', fontFamily: 'Poppins', color: '#000', backgroundColor: '#fff', border: '1px solid #fff' }}
+              variant="outlined"
+              fullWidth
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={includeAnalysis}
+                          onChange={(e) => setIncludeAnalysis(e.target.checked)}
+                          name="includeAnalysis"
+                          color="secondary"
+                          size="small"
+                        />
+                      }
+                      label={<Typography variant="body2" sx={{ fontSize: '0.7rem' }}>Análisis</Typography>}
+                    />
+                  </InputAdornment>
+                ),
+                sx: {
+                  padding: '8px',
+                  paddingLeft:'1rem',
+                  borderRadius: '1rem',
+                  fontSize: '.9rem',
+                  fontFamily: 'Poppins',
+                  backgroundColor: '#fff',
+                  border: '1px solid #fff',
+                },
+              }}
             />
-            <Button variant="contained" color="primary" type="submit" disabled={loading} sx={{ minWidth: 100 }}>
+            <Button variant="contained" color="primary" type="submit" disabled={loading} sx={{ minWidth: 100, ml:'6px', borderRadius:'2rem', pl:3, pr:3 }}>
               {loading ? <CircularProgress size={24} /> : 'Buscar'}
             </Button>
           </Box>
-          
         </form>
       </Box>
-      <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={includeAnalysis}
-                  onChange={(e) => setIncludeAnalysis(e.target.checked)}
-                  name="includeAnalysis"
-                  color="secondary"
-                  size="small"
-                />
-              }
-              label={<Typography variant="body2" sx={{ fontSize: '0.7rem' }}>Mostrar análisis</Typography>}
-              sx={{ ml: 0, mr: 1 }}
-            />
-          </Box>
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md" fullWidth>
         <DialogTitle>
           Información de la Unidad
@@ -303,13 +348,6 @@ const Chat = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {isClient && loading && (
-        <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.7)', zIndex: 9999 }}>
-          <Box sx={{ width: '250px', height: '440px', overflowY: 'hidden', transform: "scale(0.4)" }}>
-            <Lottie src="/anim/smarty.json" autoplay />
-          </Box>
-        </Box>
-      )}
     </Box>
   );
 };
