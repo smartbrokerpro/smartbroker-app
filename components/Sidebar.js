@@ -8,7 +8,7 @@ import MovieIcon from '@mui/icons-material/Movie';
 import ServicesIcon from '@mui/icons-material/Build';
 import ContactIcon from '@mui/icons-material/ContactMail';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ColorModeSwitcher from './ColorModeSwitcher';
 import Image from 'next/image';
 
@@ -22,6 +22,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { text: 'Cotizaciones', icon: <ContactIcon />, href: '/quotes' },
     { text: 'Reservas', icon: <ContactIcon />, href: '/reservations' },
     { text: 'Promesas', icon: <ContactIcon />, href: '/promises' },
+    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={20} height={20}/>, href: '/smarty' },
   ];
 
   return (
@@ -61,11 +62,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
               />
             </Box>
           </ListItem>
-          <ListItem button onClick={onToggle}>
+          <ListItem button onClick={onToggle} align="right">
             <ListItemIcon>
-              {collapsed ? <ChevronLeftIcon /> : <MenuOpenIcon />}
+              {collapsed ? <ChevronRightIcon/> : <MenuOpenIcon />}
             </ListItemIcon>
-            {!collapsed && <ListItemText primary="Collapse Sidebar" />}
           </ListItem>
           <Divider />
           {menuItems.map((item) => (

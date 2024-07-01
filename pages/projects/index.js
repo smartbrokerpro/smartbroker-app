@@ -1,55 +1,44 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
   Grid,
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  Chip,
-  CircularProgress,
-  useTheme,
-  Button,
   TextField,
-  InputAdornment,
-  Snackbar,
-  Alert,
+  IconButton,
+  Typography,
   Table,
   TableBody,
   TableCell,
- TableContainer,
+  TableContainer,
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   Avatar,
   Popover,
   MenuItem,
+  Snackbar,
+  Alert,
+  CircularProgress,
+  Pagination,
+  Button,
+  Chip,
+  Menu,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import { TableRows, GridView, MoreVert } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import { useSidebarContext } from '@/context/SidebarContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useTheme } from '@mui/material/styles';
+import LottieLoader from '@/components/LottieLoader';
+import ProjectCard from '@/components/ProjectCard';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { NumberFormatter } from '@/utils/formatNumber';
 
 const fallbackImage = '/images/fallback.jpg'; // Asegúrate de que la ruta sea correcta y la imagen exista en esa ruta
-
-const formatNumber = (value, decimals) => {
-  if (value == null) return 'N/A'; // Manejar valores nulos o indefinidos
-  const cleanedValue = value.toString().replace(/,/g, ''); // Asegurarse de que el valor sea una cadena antes de reemplazar
-  const numberValue = parseFloat(cleanedValue);
-  const formattedValue = new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  }).format(numberValue);
-  return formattedValue;
-};
-
-const NumberFormatter = ({ value, decimals = 2 }) => {
-  const formattedValue = formatNumber(value, decimals);
-  return <>{formattedValue}</>;
-};
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -67,10 +56,18 @@ export default function ProjectsPage() {
   const theme = useTheme();
   const router = useRouter();
   const showNotification = useNotification();
+  const projectRefs = useRef({});
+  const containerRef = useRef(null);
 
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    if (updatedProjectId) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [projects]);
 
   async function fetchProjects() {
     setIsRefetching(true);
@@ -83,7 +80,8 @@ export default function ProjectsPage() {
     setLoading(false);
   }
 
-  async function handleUpdateProject() {
+  async function handleUpdateProject(e) {
+    e.preventDefault();
     if (!updatePrompt.trim()) {
       setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
       return;
@@ -140,7 +138,10 @@ export default function ProjectsPage() {
       (project.address && project.address.toLowerCase().includes(query)) ||
       (project.typologies && project.typologies.some(typology => typology.toLowerCase().includes(query))) ||
       (project.min_price && project.min_price.toString().includes(query)) ||
-      (project.max_price && project.max_price.toString().includes(query))
+      (project.max_price && project.max_price.toString().includes(query)) ||
+      (project.real_estate_company.name && project.real_estate_company.name.toLowerCase().includes(query)) ||
+      (project.county.name && project.county.name.toLowerCase().includes(query)) 
+
     );
   });
 
@@ -154,20 +155,29 @@ export default function ProjectsPage() {
     setSelectedProject(null);
   };
 
+  const handleEdit = () => {
+    router.push(`/projects/${selectedProject._id}/edit`);
+    handleMenuClose();
+  };
+
+  const handleDelete = () => {
+    console.log('Eliminar proyecto:', selectedProject._id);
+    handleMenuClose();
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: theme.palette.background.default }}>
-        <CircularProgress size={60} />
+        <LottieLoader message="Cargando..." />
       </Box>
     );
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <Box ref={containerRef} sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', position: 'relative' }}>
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
         <Typography variant="h4" component="h1" gutterBottom color="primary">Proyectos</Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <TextField
             variant="outlined"
             placeholder="Búsqueda rápida"
@@ -188,69 +198,21 @@ export default function ProjectsPage() {
             </IconButton>
           </Box>
         </Box>
-
         {isRefetching && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <CircularProgress size={24} />
+            <LottieLoader message="Actualizando..." />
           </Box>
         )}
-
         {viewMode === 'grid' ? (
           <Grid container spacing={4}>
             {filteredProjects.map(project => (
               <Grid item key={project._id} xs={12} sm={6} md={4}>
-                <Card
-                  sx={{
-                    bgcolor: theme.palette.background.paper,
-                    backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
-                    transition: 'background-color 0.5s ease-in-out',
-                    mb: 3
-                  }}
-                >
-                  <CardMedia
-                    component="div"
-                    sx={{
-                      height: 140,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundImage: `url(${fallbackImage})`,
-                    }}
-                    title={project.name}
-                  />
-                  <CardContent>
-                    <Typography
-                      variant="h6"
-                      component="h2"
-                      sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: theme.palette.text.primary }}
-                    >
-                      {project.name}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: theme.palette.text.secondary }}
-                    >
-                      {project.address}
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-                      {project.typologies.map((typology, index) => (
-                        <Chip key={index} label={typology} color="primary" variant="outlined" size="small" />
-                      ))}
-                    </Box>
-                    <Chip
-                      label={
-                        <>
-                          <NumberFormatter value={project.min_price} decimals={0} /> - <NumberFormatter value={project.max_price} decimals={0} /> UF
-                        </>
-                      }
-                      color="secondary"
-                    />
-                    <Box sx={{ m: 2, display: 'flex', justifyContent: 'center' }}>
-                      <Button color="primary" variant="contained" onClick={() => router.push(`/projects/${project._id}/stock`)}>
-                        Ver Stock
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
+                <ProjectCard 
+                  ref={el => projectRefs.current[project._id] = el}
+                  project={project} 
+                  updatedProjectId={updatedProjectId} 
+                  fallbackImage={fallbackImage} 
+                />
               </Grid>
             ))}
           </Grid>
@@ -260,8 +222,10 @@ export default function ProjectsPage() {
               <TableHead>
                 <TableRow>
                   <TableCell></TableCell>
-                  <TableCell>Nombre</TableCell>
+                  <TableCell>Proyecto</TableCell>
+                  <TableCell>Inmobiliaria</TableCell>
                   <TableCell>Dirección</TableCell>
+                  <TableCell>Comuna</TableCell>
                   <TableCell>Tipologías</TableCell>
                   <TableCell>Precios</TableCell>
                   <TableCell></TableCell>
@@ -271,6 +235,7 @@ export default function ProjectsPage() {
                 {filteredProjects.map(project => (
                   <TableRow
                     key={project._id}
+                    ref={el => projectRefs.current[project._id] = el}
                     sx={{
                       backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
                       transition: 'background-color 0.5s ease-in-out'
@@ -280,7 +245,9 @@ export default function ProjectsPage() {
                       <Avatar alt={project.name} src={fallbackImage} />
                     </TableCell>
                     <TableCell>{project.name}</TableCell>
+                    <TableCell>{project.real_estate_company.name}</TableCell>
                     <TableCell>{project.address}</TableCell>
+                    <TableCell>{project.county.name}</TableCell>
                     <TableCell>
                       {project.typologies.map((typology, index) => (
                         <Chip key={index} label={typology} color="primary" variant="outlined" size="small" />
@@ -305,33 +272,35 @@ export default function ProjectsPage() {
                       >
                         <MoreVert />
                       </IconButton>
-                      <Popover
+                      <Menu
                         id="long-menu"
                         anchorEl={anchorEl}
+                        keepMounted
                         open={Boolean(anchorEl)}
                         onClose={handleMenuClose}
-                        anchorOrigin={{
-                          vertical: 'bottom',
-                          horizontal: 'right',
-                        }}
-                        transformOrigin={{
-                          vertical: 'top',
-                          horizontal: 'left',
-                        }}
-                        sx={{
-                          '& .MuiPaper-root': {
-                            boxShadow: 'none',
-                            borderRadius: '1rem',
-                          },
+                        PaperProps={{
+                          style: {
+                            borderRadius: '8px'
+                          }
                         }}
                       >
-                        <MenuItem onClick={() => {
-                          router.push(`/projects/${selectedProject?._id}/stock`);
-                          handleMenuClose();
-                        }}>
-                          Ver Stock
+                        <MenuItem onClick={handleEdit}>
+                          <ListItemIcon>
+                            <EditIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                            Editar
+                          </ListItemText>
                         </MenuItem>
-                      </Popover>
+                        <MenuItem onClick={handleDelete}>
+                          <ListItemIcon>
+                            <DeleteIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                            Eliminar
+                          </ListItemText>
+                        </MenuItem>
+                      </Menu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -340,56 +309,43 @@ export default function ProjectsPage() {
           </TableContainer>
         )}
       </Box>
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: collapsed ? '60px' : '240px',
-          right: 0,
-          backgroundColor: '#0E0F10',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '1rem',
-          zIndex: 1000,
-          transition: 'left 0.3s ease',
-        }}
-      >
-        <TextField
-          variant="outlined"
-          placeholder="Escribe tu solicitud para actualizar un proyecto"
-          value={updatePrompt}
-          onChange={(e) => setUpdatePrompt(e.target.value)}
-          sx={{
-            width: '70%',
-            marginRight: '1rem',
-            input: { color: 'white' },
-            fieldset: { borderColor: '#ccc', borderRadius: '1rem' },
-            '&:hover fieldset': { borderColor: '#ccc !important' },
-          }}
-          InputProps={{
-            style: { color: 'white' },
-            endAdornment: (
-              <InputAdornment position="end">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleUpdateProject}
-                  disabled={isSubmitting || !updatePrompt.trim()}
-                  sx={{
-                    width: isSubmitting ? 'auto' : '100px',
-                    transition: 'width 0.3s',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                  }}
-                >
-                  {isSubmitting ? <CircularProgress size={20} color="inherit" /> : 'Ejecutar'}
-                </Button>
-              </InputAdornment>
-            ),
-          }}
-        />
+      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline:'4px solid #EEEEEE', boxShadow:'-1px -1px 36px #eeeeee' }}>
+        <form onSubmit={handleUpdateProject}>
+          <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+            <TextField
+              aria-label="Crea, modifica o elimina proyectos"
+              placeholder="Crea, modifica o elimina proyectos"
+              multiline
+              minRows={1}
+              maxRows={6}
+              variant="outlined"
+              fullWidth
+              value={updatePrompt}
+              onChange={(e) => setUpdatePrompt(e.target.value)}
+              onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateProject(e); }}
+              InputProps={{
+                sx: {
+                  padding: '8px',
+                  paddingLeft: '1rem',
+                  borderRadius: '1rem',
+                  fontSize: '.9rem',
+                  fontFamily: 'Poppins',
+                  backgroundColor: '#fff',
+                  border: '1px solid #fff',
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              type="submit"
+              disabled={isSubmitting}
+              sx={{ minWidth: 100, ml: '6px', borderRadius: '2rem', pl: 3, pr: 3 }}
+            >
+              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Realizar'}
+            </Button>
+          </Box>
+        </form>
       </Box>
       <Snackbar
         open={notification.open}
@@ -401,6 +357,6 @@ export default function ProjectsPage() {
           {notification.message}
         </Alert>
       </Snackbar>
-    </div>
+    </Box>
   );
 }

@@ -241,8 +241,8 @@ export const handleSearchRequest = async (req, res) => {
         return acc;
       }, {}),
       bonuses: summarizedResults.reduce((acc, result) => {
-        const bonusRange = `${Math.floor(result.down_payment_bonus / 5) * 5}-${Math.floor(result.down_payment_bonus / 5) * 5 + 4}`;
-        acc[bonusRange] = (acc[bonusRange] || 0) + 1;
+        const bonusValue = Math.floor(result.down_payment_bonus); // Aproximar hacia abajo
+        acc[bonusValue] = (acc[bonusValue] || 0) + 1;
         return acc;
       }, {}),
       discounts: summarizedResults.reduce((acc, result) => {
@@ -255,6 +255,8 @@ export const handleSearchRequest = async (req, res) => {
       }
     };
     
+
+    console.log("summary", summary);
     let analysisResponse = '';
     if (includeAnalysis) {
       analysisResponse = await makeRequestWithRetries([
@@ -273,7 +275,7 @@ export const handleSearchRequest = async (req, res) => {
       { id: 'county_name', label: 'Comuna' },
       { id: 'down_payment_bonus', label: 'Bono' },
       { id: 'discount', label: 'Descuento' },
-      { id: 'link', label: 'Enlace', format: value => `<button onClick="window.location.href='${value}'">Ver Unidad</button>` }
+      { id: 'link', label: '', format: value => `<button onClick="window.location.href='${value}'">Ver Unidad</button>` }
     ];
 
     const finalResponse = {
@@ -281,7 +283,8 @@ export const handleSearchRequest = async (req, res) => {
       result: {
         columns: columns,
         rows: summarizedResults
-      }
+      },
+      summary: summary
     };
 
     res.status(200).json(finalResponse);

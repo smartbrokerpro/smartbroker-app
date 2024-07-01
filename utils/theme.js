@@ -1,5 +1,3 @@
-// utils/theme.js
-
 import { createTheme } from '@mui/material/styles';
 
 const commonComponents = {
@@ -83,6 +81,15 @@ const commonComponents = {
       },
     },
   },
+  MuiPopover: {
+    styleOverrides: {
+      paper: {
+        boxShadow: 'none', // Eliminar el box-shadow del Popover
+        borderRadius: '1rem',
+        border:'1px solid rgba(0,0,0,0.2)',
+      },
+    },
+  },
   MuiAccordion: {
     styleOverrides: {
       root: {
@@ -142,9 +149,9 @@ const commonComponents = {
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#0E0F10' }, // Verde brillante para el modo claro
-    secondary: { main: '#A4E844' }, // Verde más claro
-    third: { main: '#89DE32' }, // Otro tono de verde
+    primary: { main: '#0E0F10' }, 
+    secondary: { main: '#A4E844' }, 
+    third: { main: '#89DE32' }, 
     background: {
       default: '#f0f0f0', // Fondo claro
       paper: '#FFFFFF', // Papel blanco

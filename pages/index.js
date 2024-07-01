@@ -23,7 +23,7 @@ export default function Home() {
   }
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" style={{padding:'2rem'}}>
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width:'calc(100vw - 300px' }}>
         <Paper elevation={5} style={{ padding: '2rem', borderRadius:'2rem', width:'100%' }}>
 

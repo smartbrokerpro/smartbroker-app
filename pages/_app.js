@@ -30,7 +30,7 @@ function AppContent({ Component, pageProps }) {
               <Component {...pageProps} />
             </Box>
           </Box>
-          {!isLoginPage && <RightSidebar />}
+          {/* {!isLoginPage && <RightSidebar />} */}
         </Box>
       </NotificationProvider>
     </ThemeProvider>

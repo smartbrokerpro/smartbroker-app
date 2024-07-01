@@ -195,21 +195,57 @@ export const getProjects = async (req, res) => {
             }
           },
           min_price: { $min: '$stock_items.current_list_price' },
-          max_price: { $max: '$stock_items.current_list_price' }
+          max_price: { $max: '$stock_items.current_list_price' },
+          hasStock: { $gt: [{ $size: '$stock_items' }, 0] } // Añade el indicador hasStock
+        }
+      },
+      {
+        $lookup: {
+          from: 'counties',
+          localField: 'county_id',
+          foreignField: '_id',
+          as: 'county'
+        }
+      },
+      {
+        $unwind: {
+          path: '$county',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: 'real_estate_companies',
+          localField: 'real_estate_company_id',
+          foreignField: '_id',
+          as: 'real_estate_company'
+        }
+      },
+      {
+        $unwind: {
+          path: '$real_estate_company',
+          preserveNullAndEmptyArrays: true
         }
       },
       {
         $project: {
           name: 1,
           address: 1,
-          county_id: 1,
+          county: {
+            id: '$county._id',
+            name: '$county.name'
+          },
+          real_estate_company: {
+            id: '$real_estate_company._id',
+            name: '$real_estate_company.name'
+          },
           country_id: 1,
-          real_estate_company_id: 1,
           location: 1,
           typologies: 1,
           min_price: 1,
           max_price: 1,
-          updatedAt: 1
+          updatedAt: 1,
+          hasStock: 1 // Incluye el campo hasStock en el resultado final
         }
       },
       {
@@ -224,6 +260,8 @@ export const getProjects = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+
 
 // Otros métodos CRUD se mantienen igual...
 export const createProject = async (req, res) => {

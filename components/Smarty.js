@@ -23,12 +23,13 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import SurfaceIcon from '@mui/icons-material/Fullscreen';
 import MapIcon from '@mui/icons-material/Map';
 import PriceCheckIcon from '@mui/icons-material/PriceCheck';
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import Typewriter from 'typewriter-effect';
 import ModalUnitDetails from './ModalUnitDetails';
+import LottieLoader from './LottieLoader'; // Import the LottieLoader component
 
-const Lottie = dynamic(() => import('@lottielab/lottie-player/react'), { ssr: false });
 import smartyImage from '/public/images/smarty.svg'; // Asegúrate de que la ruta sea correcta
 
 const examples = [
@@ -62,7 +63,7 @@ const generateSummaryText = (summary) => {
   const mostCommonCounty = Object.keys(summary.counties || {})[0] || 'N/A';
   const mostCommonOrientation = Object.keys(summary.orientations || {})[0] || 'N/A';
   const bonuses = summary.bonuses || {};
-  const commonBonuses = Object.entries(bonuses).map(([value, count]) => `${value} (${count} veces)`).join(', ');
+  const commonBonuses = Object.entries(bonuses).map(([value, count]) => `${value}% (${count} veces)`).join(', ');
 
   const meanPrice = summary.statistics?.price?.mean?.toFixed(2) || 'N/A';
   const minPrice = summary.statistics?.price?.min || 'N/A';
@@ -71,10 +72,10 @@ const generateSummaryText = (summary) => {
   const minSurface = summary.statistics?.total_surface?.min || 'N/A';
   const maxSurface = summary.statistics?.total_surface?.max || 'N/A';
 
-  return `El análisis contó con ${totalUnits} propiedades, con precio promedio de ${meanPrice} UF, precio mínimo de ${minPrice} UF y máximo de ${maxPrice} UF. Las propiedades tenían en promedio una superficie de ${meanSurface} m², con mínimo de ${minSurface} m² y máximo de ${maxSurface} m². La mayoría de las propiedades son de ${mostCommonTypology} y se encuentran en ${mostCommonCounty}. La orientación predominante es ${mostCommonOrientation}. Todos tienen un descuento de 0. Los bonos más comunes son: ${commonBonuses}.`;
+  return `Los resultados consideran ${totalUnits} propiedades, con precio promedio de ${meanPrice} UF, precio mínimo de ${minPrice} UF y máximo de ${maxPrice} UF. Las propiedades tenían en promedio una superficie de ${meanSurface} m², con mínimo de ${minSurface} m² y máximo de ${maxSurface} m². La mayoría de las propiedades son de ${mostCommonTypology} y se encuentran en ${mostCommonCounty}. La orientación predominante es ${mostCommonOrientation}. Todos tienen un descuento de 0. Los bonos más comunes son: ${commonBonuses}.`;
 };
 
-const Chat = () => {
+const Smarty = () => {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState(null);
   const [tokensUsed, setTokensUsed] = useState(null);
@@ -89,7 +90,7 @@ const Chat = () => {
   const [showTypewriter, setShowTypewriter] = useState(false);
   const [key, setKey] = useState(0); // Added key to force re-render Typewriter
   const [page, setPage] = useState(1);
-  const rowsPerPage = 16;
+  const rowsPerPage = 12;
 
   useEffect(() => {
     setIsClient(true);
@@ -101,22 +102,23 @@ const Chat = () => {
       if (response.analysis) {
         text = highlightAnalysis(response.analysis);
       } else if (response.summary) {
-        text = generateSummaryText(response.summary);
+        text = highlightAnalysis(generateSummaryText(response.summary));
       }
       setAnalysisText(text);
       setShowTypewriter(true);
-      setKey(prevKey => prevKey + 1); // Update key to force re-render Typewriter
+      setKey(prevKey => prevKey + 1);
     }
   }, [response]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setPage(1); // Reset to first page
     setLoading(true);
     setShowExamples(false);
-    setShowTypewriter(false); // Reset typewriter visibility
+    setShowTypewriter(false);
     try {
       const payload = { query, sessionId, includeAnalysis };
-      const res = await fetch('/api/search', {
+      const res = await fetch('/api/smarty', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,12 +145,13 @@ const Chat = () => {
   const handleExampleClick = async (text) => {
     const newQuery = `${query} ${text}`;
     setQuery(newQuery);
+    setPage(1); // Reset to first page
     setLoading(true);
     setShowExamples(false);
     setShowTypewriter(false); // Reset typewriter visibility
     try {
       const payload = { query: newQuery, sessionId, includeAnalysis };
-      const res = await fetch('/api/search', {
+      const res = await fetch('/api/smarty', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,29 +234,24 @@ const Chat = () => {
           </Box>
         )}
         {isClient && loading && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', p: 2 }}>
-            <Box sx={{ width: '150px', height: '260px', overflowY: 'hidden', transform: 'scale(0.5)', transformOrigin: '50% 90%' }}>
-              <Lottie src="/anim/smarty.json" autoplay />
-            </Box>
-            <Typography variant="p" sx={{ mt: 0 }}>Buscando...</Typography>
-          </Box>
+          <LottieLoader message="Buscando..." />
         )}
-        {memoizedResponse && memoizedResponse.result.rows.length > 0 && (
+        {memoizedResponse && memoizedResponse.result && memoizedResponse.result.rows.length > 0 && (
           <>
             {showTypewriter && (
               <Typography
                 variant="body1"
-                sx={{ mb: 2, fontSize: '0.85rem', backgroundColor: response.analysis ? 'lightgreen' : 'lightcoral', borderRadius: '5px', padding: '10px' }}
+                sx={{ mb: 2, fontSize: '0.85rem', backgroundColor: response.analysis ? '#A4E844' : '#0E0F10', color: response.analysis ? 'black' : 'white', borderRadius: '5px', padding: '10px' }}
                 component="div"
               >
                 <Typewriter
                   key={key} // Add key to force re-render
                   options={{
-                    strings: [response.analysis ? `Análisis: ${analysisText}` : `Resumen: ${analysisText}`],
-                    autoStart: true,
+                    strings: [response.analysis ? `<b>Análisis</b>: ${analysisText}` : `<b>Resumen:</b> ${analysisText}`],
+                    autoStart: true, 
                     loop: false,
-                    delay: 5,
-                    deleteSpeed: Infinity,
+                    delay: 1,
+                    deleteSpeed: Infinity, 
                   }}
                 />
               </Typography>
@@ -285,7 +283,7 @@ const Chat = () => {
                   ))}
                 </TableBody>
               </Table>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                 <Pagination
                   count={Math.ceil(response.result.rows.length / rowsPerPage)}
                   page={page}
@@ -301,13 +299,8 @@ const Chat = () => {
             )}
           </>
         )}
-        {(!loading && (!response || response.result.rows.length === 0) && !showExamples) && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', p: 2 }}>
-            <Box sx={{ width: '150px', height: '260px', overflowY: 'hidden', transform: 'scale(0.5)', transformOrigin: '50% 90%' }}>
-              <Lottie src="/anim/smarty.json" autoplay />
-            </Box>
-            <Typography variant="p" sx={{ mt: 0 }}>No se encontraron resultados, <br />intenta una nueva búsqueda</Typography>
-          </Box>
+        {(!loading && (!response || !response.result || response.result.rows.length === 0) && !showExamples) && (
+          <LottieLoader message="No se encontraron resultados, intenta una nueva búsqueda" />
         )}
       </Box>
       <Box sx={{ position: 'sticky', bottom: 0, width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff' }}>
@@ -337,7 +330,7 @@ const Chat = () => {
                           size="small"
                         />
                       }
-                      label={<Typography variant="body2" sx={{ fontSize: '0.7rem' }}>Análisis</Typography>}
+                      label={<Typography variant="body2" sx={{ fontSize: '0.7rem', display:'flex', alignItems:'center' }}>Análisis</Typography>}
                     />
                   </InputAdornment>
                 ),
@@ -363,4 +356,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default Smarty;
