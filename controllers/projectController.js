@@ -231,6 +231,7 @@ export const getProjects = async (req, res) => {
         $project: {
           name: 1,
           address: 1,
+          gallery: 1,
           county: {
             id: '$county._id',
             name: '$county.name'

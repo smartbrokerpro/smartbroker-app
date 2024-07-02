@@ -57,7 +57,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
           height: 140,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundImage: `url(${fallbackImage})`,
+          backgroundImage: `url(${project?.gallery ? project?.gallery[0] : fallbackImage})`,
           position: 'relative'
         }}
         title={project.name}
@@ -71,10 +71,11 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
             position: 'absolute',
             top: 8,
             right: 8,
-            color: 'white',
-            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            bgcolor: 'rgba(0,0,0,0.6)',
+            color:'white',
             '&:hover': {
-              bgcolor: 'rgba(0, 0, 0, 0.7)'
+              color: 'black',
+            bgcolor: 'rgba(255,255,255, 0.6)',
             }
           }}
         >

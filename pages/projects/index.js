@@ -34,8 +34,8 @@ import { useNotification } from '@/context/NotificationContext';
 import { useTheme } from '@mui/material/styles';
 import LottieLoader from '@/components/LottieLoader';
 import ProjectCard from '@/components/ProjectCard';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Edit as EditIcon, Delete as DeleteIcon, AddBox as EditStockIcon } from '@mui/icons-material';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import { NumberFormatter } from '@/utils/formatNumber';
 
 const fallbackImage = '/images/fallback.jpg'; // Asegúrate de que la ruta sea correcta y la imagen exista en esa ruta
@@ -52,6 +52,8 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [updatedProjectId, setUpdatedProjectId] = useState(null);
   const [isRefetching, setIsRefetching] = useState(false); // Nuevo estado para manejar el refetch
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const { collapsed } = useSidebarContext();
   const theme = useTheme();
   const router = useRouter();
@@ -86,7 +88,7 @@ export default function ProjectsPage() {
       setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
       return;
     }
-  
+
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/gpt/gpt-handler', {
@@ -96,14 +98,14 @@ export default function ProjectsPage() {
         },
         body: JSON.stringify({ prompt: updatePrompt }),
       });
-  
+
       const result = await response.json();
-  
+
       if (response.ok) {
         console.log('Operación exitosa:', result);
         setNotification({ open: true, message: 'Operación exitosa', severity: 'success' });
         setUpdatePrompt('');
-  
+
         const updatedId = result.updatedProjectId || result.deletedProjectId || result.createdProjectId;
         if (updatedId) {
           console.log(`Updated/Deleted/Created project ID: ${updatedId}`);
@@ -140,8 +142,7 @@ export default function ProjectsPage() {
       (project.min_price && project.min_price.toString().includes(query)) ||
       (project.max_price && project.max_price.toString().includes(query)) ||
       (project.real_estate_company.name && project.real_estate_company.name.toLowerCase().includes(query)) ||
-      (project.county.name && project.county.name.toLowerCase().includes(query)) 
-
+      (project.county.name && project.county.name.toLowerCase().includes(query))
     );
   });
 
@@ -163,6 +164,10 @@ export default function ProjectsPage() {
   const handleDelete = () => {
     console.log('Eliminar proyecto:', selectedProject._id);
     handleMenuClose();
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
   };
 
   if (loading) {
@@ -207,109 +212,128 @@ export default function ProjectsPage() {
           <Grid container spacing={4}>
             {filteredProjects.map(project => (
               <Grid item key={project._id} xs={12} sm={6} md={4}>
-                <ProjectCard 
+                <ProjectCard
                   ref={el => projectRefs.current[project._id] = el}
-                  project={project} 
-                  updatedProjectId={updatedProjectId} 
-                  fallbackImage={fallbackImage} 
+                  project={project}
+                  updatedProjectId={updatedProjectId}
+                  fallbackImage={fallbackImage}
                 />
               </Grid>
             ))}
           </Grid>
         ) : (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell></TableCell>
-                  <TableCell>Proyecto</TableCell>
-                  <TableCell>Inmobiliaria</TableCell>
-                  <TableCell>Dirección</TableCell>
-                  <TableCell>Comuna</TableCell>
-                  <TableCell>Tipologías</TableCell>
-                  <TableCell>Precios</TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredProjects.map(project => (
-                  <TableRow
-                    key={project._id}
-                    ref={el => projectRefs.current[project._id] = el}
-                    sx={{
-                      backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
-                      transition: 'background-color 0.5s ease-in-out'
-                    }}
-                  >
-                    <TableCell>
-                      <Avatar alt={project.name} src={fallbackImage} />
-                    </TableCell>
-                    <TableCell>{project.name}</TableCell>
-                    <TableCell>{project.real_estate_company.name}</TableCell>
-                    <TableCell>{project.address}</TableCell>
-                    <TableCell>{project.county.name}</TableCell>
-                    <TableCell>
-                      {project.typologies.map((typology, index) => (
-                        <Chip key={index} label={typology} color="primary" variant="outlined" size="small" />
-                      ))}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={
-                          <>
-                            <NumberFormatter value={project.min_price} decimals={0} /> - <NumberFormatter value={project.max_price} decimals={0} /> UF
-                          </>
-                        }
-                        color="secondary"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        aria-label="more"
-                        aria-controls="long-menu"
-                        aria-haspopup="true"
-                        onClick={(e) => handleMenuClick(e, project)}
-                      >
-                        <MoreVert />
-                      </IconButton>
-                      <Menu
-                        id="long-menu"
-                        anchorEl={anchorEl}
-                        keepMounted
-                        open={Boolean(anchorEl)}
-                        onClose={handleMenuClose}
-                        PaperProps={{
-                          style: {
-                            borderRadius: '8px'
-                          }
-                        }}
-                      >
-                        <MenuItem onClick={handleEdit}>
-                          <ListItemIcon>
-                            <EditIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-                            Editar
-                          </ListItemText>
-                        </MenuItem>
-                        <MenuItem onClick={handleDelete}>
-                          <ListItemIcon>
-                            <DeleteIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-                            Eliminar
-                          </ListItemText>
-                        </MenuItem>
-                      </Menu>
-                    </TableCell>
+          <>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell></TableCell>
+                    <TableCell>Proyecto</TableCell>
+                    <TableCell>Inmobiliaria</TableCell>
+                    <TableCell>Dirección</TableCell>
+                    <TableCell>Comuna</TableCell>
+                    <TableCell>Tipologías</TableCell>
+                    <TableCell>Precios</TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {filteredProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage).map(project => (
+                    <TableRow
+                      key={project._id}
+                      ref={el => projectRefs.current[project._id] = el}
+                      sx={{
+                        backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+                        transition: 'background-color 0.5s ease-in-out'
+                      }}
+                    >
+                      <TableCell>
+                        <Avatar alt={project.name} src={fallbackImage} />
+                      </TableCell>
+                      <TableCell>{project.name}</TableCell>
+                      <TableCell>{project.real_estate_company.name}</TableCell>
+                      <TableCell>{project.address}</TableCell>
+                      <TableCell>{project.county.name}</TableCell>
+                      <TableCell>
+                        {project.typologies.map((typology, index) => (
+                          <Chip key={index} label={typology} color="primary" variant="outlined" size="small" />
+                        ))}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={
+                            <>
+                              <NumberFormatter value={project.min_price} decimals={0} /> - <NumberFormatter value={project.max_price} decimals={0} /> UF
+                            </>
+                          }
+                          color="secondary"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          aria-label="more"
+                          aria-controls="long-menu"
+                          aria-haspopup="true"
+                          onClick={(e) => handleMenuClick(e, project)}
+                        >
+                          <MoreVert />
+                        </IconButton>
+                        <Menu
+                          id="long-menu"
+                          anchorEl={anchorEl}
+                          keepMounted
+                          open={Boolean(anchorEl)}
+                          onClose={handleMenuClose}
+                          PaperProps={{
+                            style: {
+                              borderRadius: '8px',
+                              boxShadow: 'none',
+                            },
+                          }}
+                        >
+                          <MenuItem onClick={handleEdit}>
+                            <ListItemIcon>
+                              <EditIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                              Editar proyecto
+                            </ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={() => router.push(`/projects/${selectedProject._id}/edit-stock`)}>
+                            <ListItemIcon>
+                              <EditNoteIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                              Editar stock
+                            </ListItemText>
+                          </MenuItem>
+                          <MenuItem onClick={handleDelete}>
+                            <ListItemIcon>
+                              <DeleteIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                              Eliminar
+                            </ListItemText>
+                          </MenuItem>
+                        </Menu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+              <Pagination
+                count={Math.ceil(filteredProjects.length / rowsPerPage)}
+                page={page}
+                onChange={handleChangePage}
+                color="primary"
+              />
+            </Box>
+          </>
         )}
       </Box>
-      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline:'4px solid #EEEEEE', boxShadow:'-1px -1px 36px #eeeeee' }}>
+      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <form onSubmit={handleUpdateProject}>
           <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <TextField
