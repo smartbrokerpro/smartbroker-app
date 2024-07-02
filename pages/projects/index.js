@@ -233,7 +233,7 @@ export default function ProjectsPage() {
                     <TableCell>Dirección</TableCell>
                     <TableCell>Comuna</TableCell>
                     <TableCell>Tipologías</TableCell>
-                    <TableCell>Precios</TableCell>
+                    <TableCell>Valores</TableCell>
                     <TableCell></TableCell>
                   </TableRow>
                 </TableHead>
@@ -248,7 +248,7 @@ export default function ProjectsPage() {
                       }}
                     >
                       <TableCell>
-                        <Avatar alt={project.name} src={fallbackImage} />
+                        <Avatar alt={project.name} src={project.gallery[0]} />
                       </TableCell>
                       <TableCell>{project.name}</TableCell>
                       <TableCell>{project.real_estate_company.name}</TableCell>

@@ -1,52 +1,77 @@
-// components/Sidebar.js
-
-import React, { useState } from 'react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, IconButton, Tooltip, Divider, Box } from '@mui/material';
+import React from 'react';
+import { useRouter } from 'next/router';
+import { useSession, signOut } from 'next-auth/react';
+import { Drawer, List, ListItem, ListItemIcon, ListItemText, Tooltip, Divider, Box, Avatar, Badge, Menu, MenuItem, IconButton, Typography } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
-import TableChartIcon from '@mui/icons-material/TableChart';
-import MovieIcon from '@mui/icons-material/Movie';
-import ServicesIcon from '@mui/icons-material/Build';
-import ContactIcon from '@mui/icons-material/ContactMail';
+import BusinessIcon from '@mui/icons-material/Business';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import GroupIcon from '@mui/icons-material/Group';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ColorModeSwitcher from './ColorModeSwitcher';
+import SettingsIcon from '@mui/icons-material/Settings';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import Image from 'next/image';
+import ColorModeSwitcher from './ColorModeSwitcher';
 
 const Sidebar = ({ collapsed, onToggle }) => {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const handleAlertsClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleAlertsClose = () => {
+    setAnchorEl(null);
+  };
+
+  const isActiveRoute = (href) => {
+    const pathname = router.pathname.split('/')[1];
+    const hrefPath = href.split('/')[1];
+    return pathname === hrefPath;
+  };
+
   const menuItems = [
     { text: 'Inicio', icon: <HomeIcon />, href: '/' },
-    { text: 'Inmobiliarias', icon: <TableChartIcon />, href: '/real-estate-companies' },
-    { text: 'Proyectos', icon: <MovieIcon />, href: '/projects' },
-    { text: 'Stock', icon: <ServicesIcon />, href: '/stock' },
-    { text: 'Clientes', icon: <ContactIcon />, href: '/clients' },
-    { text: 'Cotizaciones', icon: <ContactIcon />, href: '/quotes' },
-    { text: 'Reservas', icon: <ContactIcon />, href: '/reservations' },
-    { text: 'Promesas', icon: <ContactIcon />, href: '/promises' },
-    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={20} height={20}/>, href: '/smarty' },
+    { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies' },
+    { text: 'Proyectos', icon: <ApartmentIcon />, href: '/projects' },
+    { text: 'Stock', icon: <InventoryIcon />, href: '/stock' },
+    { text: 'Clientes', icon: <GroupIcon />, href: '/clients' },
+    { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotes' },
+    { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations' },
+    { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises' },
+    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty' },
   ];
 
   return (
     <Drawer
       variant="permanent"
       sx={{
-        borderRadius:'0!important',
+        borderRadius: '0!important',
         width: collapsed ? 60 : 240,
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: {
           width: collapsed ? 60 : 240,
           boxSizing: 'border-box',
           transition: 'width 0.3s',
-          backgroundColor:'#0E0F10',
-          color:'white',
-          borderRadius:'0rem'
-
+          backgroundColor: '#0E0F10',
+          color: 'white',
+          borderRadius: '0rem',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
         },
         [`& .MuiListItemIcon-root`]: {
-          color:'white',
+          color: 'white',
         },
-        transition:'.3s all'
+        transition: '.3s all'
       }}
-      
     >
       <Box>
         <List>
@@ -64,13 +89,26 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </ListItem>
           <ListItem button onClick={onToggle} align="right">
             <ListItemIcon>
-              {collapsed ? <ChevronRightIcon/> : <MenuOpenIcon />}
+              {collapsed ? <ChevronRightIcon /> : <MenuOpenIcon />}
             </ListItemIcon>
           </ListItem>
           <Divider />
           {menuItems.map((item) => (
             <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
-              <ListItem button component="a" href={item.href}>
+              <ListItem 
+                button 
+                component="a" 
+                href={item.href}
+                sx={{
+                  borderRadius: '0 2rem 2rem 0',
+                  backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
+                  color: isActiveRoute(item.href) ? 'black' : 'inherit',
+                  '&:hover': {
+                    backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
+                    color: isActiveRoute(item.href) ? 'black' : 'white',
+                  },
+                }}
+              >
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 {!collapsed && <ListItemText primary={item.text} />}
               </ListItem>
@@ -78,8 +116,48 @@ const Sidebar = ({ collapsed, onToggle }) => {
           ))}
         </List>
       </Box>
-      <Box>
-        <ColorModeSwitcher />
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Divider sx={{borderColor:'#333333'}}/>
+        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb:2 }}>
+          <Avatar alt={session?.user?.name} src={session?.user?.image} sx={{ width: 32, height: 32 }} />
+          {!collapsed && (
+            <Box sx={{ ml: 2 }}>
+              <Typography sx={{ fontSize: '0.65rem' }}>{session?.user?.name}</Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'gray' }}>{session?.user?.email}</Typography>
+            </Box>
+          )}
+        </Box>
+        <Divider sx={{borderColor:'#222222', borderStyle:'dotted'}}/>
+        <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', mt: 2 }}>
+          <Tooltip title="Configuración" placement="top">
+            <IconButton sx={{ color: 'white' }}>
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Alertas" placement="top">
+            <IconButton sx={{ color: 'white' }} onClick={handleAlertsClick}>
+              <Badge badgeContent={3} color="success">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Cerrar sesión" placement="top">
+            <IconButton sx={{ color: 'white' }} onClick={() => signOut()}>
+              <ExitToAppIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleAlertsClose}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        >
+          <MenuItem onClick={handleAlertsClose}>Alerta 1</MenuItem>
+          <MenuItem onClick={handleAlertsClose}>Alerta 2</MenuItem>
+          <MenuItem onClick={handleAlertsClose}>Alerta 3</MenuItem>
+        </Menu>
       </Box>
     </Drawer>
   );

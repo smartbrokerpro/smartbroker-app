@@ -162,7 +162,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
               }
             }}
           >
-            {project.hasStock ? 'Ver Stock' : 'Crear Stock'}
+            {project.hasStock ? 'Ver Stock' : 'Cargar Stock'}
           </Button>
         </Box>
       </CardContent>

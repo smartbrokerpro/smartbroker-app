@@ -156,12 +156,12 @@ const EditProject = () => {
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Edit Project
+        Estás editando el proyecto <b>{project.name}</b>
       </Typography>
       {project && (
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Name"
+            label="Nombre del proyecto"
             name="name"
             value={project.name || ''}
             onChange={handleInputChange}
@@ -169,7 +169,7 @@ const EditProject = () => {
             margin="normal"
           />
           <TextField
-            label="Address"
+            label="Dirección"
             name="address"
             value={project.address || ''}
             onChange={handleInputChange}
@@ -184,7 +184,7 @@ const EditProject = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Region"
+                label="Región"
                 margin="normal"
                 fullWidth
               />
@@ -198,7 +198,7 @@ const EditProject = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="County"
+                label="Comuna"
                 margin="normal"
                 fullWidth
               />
@@ -212,39 +212,32 @@ const EditProject = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Real Estate Company"
+                label="Inmobiliaria"
                 margin="normal"
                 fullWidth
               />
             )}
           />
-          <TextField
-            label="Image URL"
-            name="image"
-            value={project.image || ''}
-            onChange={handleInputChange}
-            fullWidth
-            margin="normal"
-          />
+          
           <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, textAlign: 'center', mt: 2 }}>
             <input {...getInputProps()} />
             {isDragActive ? (
-              <p>Drop the files here ...</p>
+              <p>Suelta los archivos aquí ...</p>
             ) : (
-              <p>Drag 'n' drop some files here, or click to select files</p>
+              <p>Arrastra y suelta los archivos aquí, o haz click para seleccionar los archivos</p>
             )}
           </Box>
           {project.gallery && project.gallery.length > 0 && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="h6">Gallery</Typography>
+              <Typography variant="h6">Imágenes</Typography>
               {project.gallery.map((url, index) => (
-                <img key={index} src={url} alt={`Gallery Image ${index}`} style={{ width: '100%', marginTop: 10 }} />
+                <img key={index} src={url} alt={`Gallery Image ${index}`} style={{ width: '20%', marginTop: 10, marginRight:4 }} />
               ))}
             </Box>
           )}
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, display:'flex', justifyContent:'center' }}>
             <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
-              {isSubmitting ? <CircularProgress size={24} /> : 'Save Changes'}
+              {isSubmitting ? <CircularProgress size={24} /> : 'Guardar cambios'}
             </Button>
           </Box>
         </form>
