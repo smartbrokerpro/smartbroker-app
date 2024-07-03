@@ -24,7 +24,7 @@ const commonComponents = {
     styleOverrides: {
       root: {
         '&.MuiButton-containedPrimary': {
-          backgroundColor: '#5DA010',
+          backgroundColor: '#86DB2E',
           color: 'white',
         },
         '&.MuiButton-containedSecondary': {
@@ -42,7 +42,7 @@ const commonComponents = {
     styleOverrides: {
       root: {
         '&.MuiFab-primary': {
-          backgroundColor: '#5DA010',
+          backgroundColor: '#86DB2E',
           color: 'white',
         },
         '&.MuiFab-secondary': {
@@ -56,7 +56,7 @@ const commonComponents = {
     styleOverrides: {
       root: {
         '&.MuiChip-filledPrimary': {
-          backgroundColor: '#5DA010',
+          backgroundColor: '#86DB2E',
           color: 'white',
         },
         '&.MuiChip-filledSecondary': {
@@ -64,12 +64,12 @@ const commonComponents = {
           color: 'white',
         },
         '&.MuiChip-outlinedPrimary': {
-          borderColor: '#5DA010',
+          borderColor: '#86DB2E',
           color: '#5DA010',
         },
         '&.MuiChip-outlinedSecondary': {
-          borderColor: '#7BBF2A',
-          color: '#7BBF2A',
+          borderColor: '#86DB2E',
+          color: '#86DB2E',
         },
       },
     },

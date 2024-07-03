@@ -1,12 +1,11 @@
-import { useRouter } from 'next/router';
-import React, { useEffect, useState } from 'react';
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
-  CircularProgress,
-  Typography,
-  useTheme,
-  Button,
   TextField,
+  IconButton,
+  Typography,
   Table,
   TableBody,
   TableCell,
@@ -14,57 +13,73 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
+  Snackbar,
+  Alert,
+  Pagination,
+  Button,
   Collapse,
-  TableSortLabel
+  CircularProgress,
+  Avatar,
 } from '@mui/material';
-import { ExpandMore, ExpandLess } from '@mui/icons-material';
-import ProjectDetailsCard from '@/components/ProjectDetailsCard';
-import { cleanNumberFormat, formatCurrency } from '@/utils/format';
-import numeral from 'numeral';
+import { ExpandMore, ExpandLess, ChevronLeft, Edit, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
+import { useRouter } from 'next/router';
+import { useTheme } from '@mui/material/styles';
+import { NumberFormatter } from '@/utils/formatNumber';
+import LottieLoader from '@/components/LottieLoader';
+import QuotationDialog from '@/components/QuotationDialog';
 
-  
-  const NumberFormatter = ({ value, unit, prependUnit = false, decimals = 2 }) => {
-    const formattedValue = value;
-  
-    return (
-      <div>
-        {prependUnit ? `${unit} ${formattedValue}` : `${formattedValue} ${unit}`}
-      </div>
-    );
-  };
-    
-export default function ProjectStockPage() {
+export default function StockPage() {
   const router = useRouter();
   const { idProject } = router.query;
   const [stock, setStock] = useState([]);
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
+  const [updatePrompt, setUpdatePrompt] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const [searchQuery, setSearchQuery] = useState('');
-  const [order, setOrder] = useState('asc');
-  const [orderBy, setOrderBy] = useState('');
-  const [expandedRows, setExpandedRows] = useState({});
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [updatedStockId, setUpdatedStockId] = useState(null);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const theme = useTheme();
+  const stockRefs = useRef({});
+  const containerRef = useRef(null);
+  const [openQuotationDialog, setOpenQuotationDialog] = useState(false);
+  const [selectedStockItem, setSelectedStockItem] = useState(null);
+  const [openCommercialConditions, setOpenCommercialConditions] = useState(false);
 
   useEffect(() => {
     if (idProject) {
-      fetchProjectDetails();
+      fetchProject();
       fetchStock();
     }
   }, [idProject]);
 
-  async function fetchProjectDetails() {
+  useEffect(() => {
+    if (updatedStockId) {
+      const element = stockRefs.current[updatedStockId];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [updatedStockId, stock]);
+
+  async function fetchProject() {
     try {
-      const response = await fetch(`/api/projects/${idProject}`);
+      const response = await fetch(`/api/projects/details/${idProject}`);
       const data = await response.json();
       if (data.success) {
         setProject(data.data);
+        console.log(data.data)
       } else {
-        setProject(null);
+        console.error('Error fetching project details:', data.error);
       }
     } catch (error) {
       console.error('Error fetching project details:', error);
     }
+    setLoading(false);
   }
 
   async function fetchStock() {
@@ -81,6 +96,54 @@ export default function ProjectStockPage() {
       console.error('Error fetching stock:', error);
     }
     setLoading(false);
+    setFirstLoad(false);
+  }
+
+  async function handleUpdateStock(e) {
+    e.preventDefault();
+    if (!updatePrompt.trim()) {
+      setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
+      return;
+    }
+  
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/gpt/stock-gpt-handler', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: updatePrompt, project_id: idProject, apartment: expandedRow }),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        console.log('Operación exitosa:', result);
+        setNotification({ open: true, message: 'Operación exitosa', severity: 'success' });
+        setUpdatePrompt('');
+  
+        const updatedId = result.data?._id || result.updatedStockId || result.deletedStockId || result.createdStockId;
+        if (updatedId) {
+          console.log(`Updated/Deleted/Created stock ID: ${updatedId}`);
+          setUpdatedStockId(updatedId);
+          fetchStock();
+          setTimeout(() => {
+            console.log(`Removing highlight for stock ID: ${updatedId}`);
+            setUpdatedStockId(null);
+          }, 3000);
+        } else {
+          fetchStock();
+        }
+      } else {
+        console.error('Error en la operación:', result);
+        setNotification({ open: true, message: result.error || 'Error en la operación', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Error en la operación:', error);
+      setNotification({ open: true, message: 'Error en la operación', severity: 'error' });
+    }
+    setIsSubmitting(false);
   }
 
   function handleSearch(e) {
@@ -93,151 +156,167 @@ export default function ProjectStockPage() {
       item.apartment.toLowerCase().includes(lowercasedQuery) ||
       item.typology.toLowerCase().includes(lowercasedQuery) ||
       item.orientation.toLowerCase().includes(lowercasedQuery) ||
-      item.current_list_price.toLowerCase().includes(lowercasedQuery) ||
-      item.down_payment_bonus.toLowerCase().includes(lowercasedQuery) ||
-      item.discount.toLowerCase().includes(lowercasedQuery)
+      item.current_list_price.toString().toLowerCase().includes(lowercasedQuery) ||
+      item.down_payment_bonus.toString().toLowerCase().includes(lowercasedQuery) ||
+      item.discount.toString().toLowerCase().includes(lowercasedQuery)
     );
-  }
-
-  function handleRequestSort(property) {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  }
-
-  function toggleRowExpand(id) {
-    setExpandedRows((prev) => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
   }
 
   const filteredStock = stock.filter(filterStock);
 
-  const sortedStock = filteredStock.sort((a, b) => {
-    if (orderBy === '') return 0;
-    const valueA = a[orderBy];
-    const valueB = b[orderBy];
-    if (valueA < valueB) return order === 'asc' ? -1 : 1;
-    if (valueA > valueB) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
+  function toggleRowExpand(stockId) {
+    setExpandedRow(expandedRow === stockId ? null : stockId);
+  }
 
-  if (loading) {
+  if (loading && firstLoad) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: theme.palette.background.default }}>
-        <CircularProgress size={60} />
+        <LottieLoader />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
-      <Button onClick={() => router.push(`/projects`)}>Volver a Proyectos</Button>
-      <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ mt: 2 }}>Stock del Proyecto</Typography>
-      {project && <ProjectDetailsCard project={project} />}
+    <Box ref={containerRef} sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
+      <Button 
+        onClick={() => router.push(`/projects`)} 
+        startIcon={<ChevronLeft />} 
+        variant="outlined" 
+        color="primary"
+      >
+        Volver a Proyectos
+      </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 1 }}>
+        <Avatar
+          src={project?.gallery?.[0] || '/images/fallback.jpg'}
+          alt={project?.name}
+          sx={{ width: 60, height: 60, mr: 2 }}
+        />
+        <Typography variant="h4" component="h1" color="primary">
+          Stock del Proyecto <b>{project?.name}</b>
+        </Typography>
+      </Box>
+      <Box sx={{ mb: 2 }}>
+        <Button
+          onClick={() => setOpenCommercialConditions(!openCommercialConditions)}
+          endIcon={openCommercialConditions ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+          sx={{ textTransform: 'none' }}
+        >
+          <Typography variant="body2">CONDICIONES COMERCIALES</Typography>
+        </Button>
+        <Collapse in={openCommercialConditions}>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {project?.commercialConditions || 'No hay condiciones comerciales disponibles.'}
+          </Typography>
+        </Collapse>
+      </Box>
       <TextField
         fullWidth
         variant="outlined"
-        placeholder="Buscar..."
+        placeholder="Búsqueda rápida"
         value={searchQuery}
         onChange={handleSearch}
         sx={{ mb: 2 }}
+        InputProps={{
+          style: { fontSize: '0.875rem', height: '2.5rem' },
+        }}
+        helperText={`${filteredStock.length} de ${stock.length} unidades encontradas`}
       />
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>
-                Unidad
-                <TableSortLabel
-                  active={orderBy === 'apartment'}
-                  direction={orderBy === 'apartment' ? order : 'asc'}
-                  onClick={() => handleRequestSort('apartment')}
-                  sx={{ marginLeft: 1, fontSize: '1rem' }}
-                />
-              </TableCell>
-              <TableCell>
-                Tipología
-                <TableSortLabel
-                  active={orderBy === 'typology'}
-                  direction={orderBy === 'typology' ? order : 'asc'}
-                  onClick={() => handleRequestSort('typology')}
-                  sx={{ marginLeft: 1, fontSize: '1rem' }}
-                />
-              </TableCell>
+              <TableCell>Unidad</TableCell>
+              <TableCell>Tipología</TableCell>
               <TableCell>Orientación</TableCell>
-              <TableCell  align='center'>
-                Precio
-                <TableSortLabel
-                  active={orderBy === 'current_list_price'}
-                  direction={orderBy === 'current_list_price' ? order : 'asc'}
-                  onClick={() => handleRequestSort('current_list_price')}
-                  sx={{ marginLeft: 1, fontSize: '1rem' }}
-                />
-              </TableCell>
-              <TableCell>Bono Pie</TableCell>
-              <TableCell>Descuento</TableCell>
+              <TableCell align='center'>Precio</TableCell>
+              <TableCell align='center'>Bono Pie</TableCell>
+              <TableCell align='center'>Descuento</TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedStock.map(item => (
+            {filteredStock.slice((page - 1) * rowsPerPage, page * rowsPerPage).map(item => (
               <React.Fragment key={item._id}>
-                <TableRow>
+                <TableRow
+                  ref={el => stockRefs.current[item._id] = el}
+                  sx={{
+                    backgroundColor: updatedStockId === item._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+                    transition: 'background-color 0.5s ease-in-out'
+                  }}
+                >
                   <TableCell>{item.apartment}</TableCell>
                   <TableCell>{item.typology}</TableCell>
                   <TableCell>{item.orientation}</TableCell>
-                  <TableCell align='center'><NumberFormatter value={item.current_list_price} unit={'UF'} prependUnit={false} decimals={0} /></TableCell>
-                  <TableCell align='center'><NumberFormatter value={item.down_payment_bonus} unit={'%'} prependUnit={false} decimals={0} /></TableCell>
-                  <TableCell align='center'><NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} /></TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.current_list_price} unit={'UF'} prependUnit={false} decimals={0} appendUnit={true} /></TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.down_payment_bonus} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} /></TableCell>
+                  <TableCell align='center'><NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} /></TableCell>
+                  
                   <TableCell>
-                    <IconButton onClick={() => toggleRowExpand(item._id)}>
-                      {expandedRows[item._id] ? <ExpandLess /> : <ExpandMore />}
+                    <IconButton onClick={() => toggleRowExpand(item.apartment)}>
+                      {expandedRow === item.apartment ? <ExpandLess /> : <ExpandMore />}
                     </IconButton>
                   </TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
-                    <Collapse in={expandedRows[item._id]} timeout="auto" unmountOnExit>
-                      <Box sx={{ margin: 1 }}>
-                        <Table size="small">
-                          <TableBody>
-                            <TableRow>
-                              <TableCell>Role</TableCell>
-                              <TableCell>{item.role}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Modelo</TableCell>
-                              <TableCell>{item.model}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Superficie interior</TableCell>
-                              <TableCell>{item.interior_surface} m²</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Superficie terraza</TableCell>
-                              <TableCell>{item.terrace_surface} m²</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Superficie total</TableCell>
-                              <TableCell>{item.total_surface} m²</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Renta</TableCell>
-                              <TableCell>{item.rent}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell>Estado</TableCell>
-                              <TableCell>{item.status_id}</TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
+                    <Collapse in={expandedRow === item.apartment} timeout="auto" unmountOnExit>
+                      <Box sx={{ display: 'flex', margin: 1 }}>
+                        <Box sx={{ flex: 2 }}>
+                          <Table size="small">
+                            <TableBody>
+                              <TableRow>
+                                <TableCell>Role</TableCell>
+                                <TableCell>{item.role}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Modelo</TableCell>
+                                <TableCell>{item.model}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Superficie interior</TableCell>
+                                <TableCell>{item.interior_surface} m²</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Superficie terraza</TableCell>
+                                <TableCell>{item.terrace_surface} m²</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Superficie total</TableCell>
+                                <TableCell>{item.total_surface} m²</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Renta</TableCell>
+                                <TableCell>{item.rent}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell>Estado</TableCell>
+                                <TableCell>{item.status_id}</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </Box>
+                        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <img src="/images/plan.jpg" alt="Plan" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                         <Button
                           color="primary"
                           variant="contained"
-                          sx={{ my: 2, float: 'right' }}
-                          onClick={() => console.log('Cotizar clicked')}
+                          onClick={() => console.log('Editar clicked')}
+                          sx={{ mr: 2 }}
+                          startIcon={<Edit />}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          color="primary"
+                          variant="contained"
+                          onClick={() => {
+                            setSelectedStockItem(item);
+                            setOpenQuotationDialog(true);
+                          }}
                         >
                           Cotizar
                         </Button>
@@ -250,6 +329,69 @@ export default function ProjectStockPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+        <Pagination
+          count={Math.ceil(filteredStock.length / rowsPerPage)}
+          page={page}
+          onChange={(event, newPage) => setPage(newPage)}
+          color="primary"
+        />
+      </Box>
+      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+        <form onSubmit={handleUpdateStock}>
+          <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+            <TextField
+              aria-label="Crea, modifica o elimina stock"
+              placeholder="Crea, modifica o elimina stock"
+              multiline
+              minRows={1}
+              maxRows={6}
+              variant="outlined"
+              fullWidth
+              value={updatePrompt}
+              onChange={(e) => setUpdatePrompt(e.target.value)}
+              onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateStock(e); }}
+              InputProps={{
+                sx: {
+                  padding: '8px',
+                  paddingLeft: '1rem',
+                  borderRadius: '1rem',
+                  fontSize: '.9rem',
+                  fontFamily: 'Poppins',
+                  backgroundColor: '#fff',
+                  border: '1px solid #fff',
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              type="submit"
+              disabled={isSubmitting}
+              sx={{ minWidth: 100, ml: '6px', borderRadius: '2rem', pl: 3, pr: 3 }}
+            >
+              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Realizar'}
+            </Button>
+          </Box>
+        </form>
+      </Box>
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification({ ...notification, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
+      <QuotationDialog
+        open={openQuotationDialog}
+        onClose={() => setOpenQuotationDialog(false)}
+        stockItem={selectedStockItem}
+        projectName={project ? project.name : ''}
+      />
     </Box>
   );
 }

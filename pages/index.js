@@ -32,14 +32,16 @@ export default function Home() {
           <Button variant="contained" color="primary" onClick={() => signOut()}>Sign Out</Button>
         </Paper>
 
-        <Paper elevation={5} style={{ marginTop:'1rem', padding: '2rem', borderRadius:'2rem', width:'100%' }}>
-          <h3>Resumen de procesos</h3>
-          <FunnelGraph/>
-        </Paper>
-        <Paper elevation={5} style={{ marginTop:'1rem', padding: '2rem', borderRadius:'2rem', width:'100%' }}>
-          <h3>Resumen de procesos</h3>
-          <FunnelChart data={data} />
-        </Paper>
+        <Box sx={{display:'flex', gap:2, width:'100%'}}>
+          <Paper elevation={5} style={{ flex:1, marginTop:'1rem', padding: '2rem', borderRadius:'2rem', width:'100%' }}>
+            <h3>Resumen de procesos</h3>
+            <FunnelGraph/>
+          </Paper>
+          <Paper elevation={5} style={{ flex:1, marginTop:'1rem', padding: '2rem', borderRadius:'2rem', width:'100%' }}>
+            <h3>Resumen de procesos</h3>
+            <FunnelChart data={data} />
+          </Paper>
+        </Box>
       </Box>
 
       

@@ -38,15 +38,15 @@ const Sidebar = ({ collapsed, onToggle }) => {
   };
 
   const menuItems = [
-    { text: 'Inicio', icon: <HomeIcon />, href: '/' },
-    { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies' },
-    { text: 'Proyectos', icon: <ApartmentIcon />, href: '/projects' },
-    { text: 'Stock', icon: <InventoryIcon />, href: '/stock' },
-    { text: 'Clientes', icon: <GroupIcon />, href: '/clients' },
-    { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotes' },
-    { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations' },
-    { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises' },
-    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty' },
+    { text: 'Inicio', icon: <HomeIcon />, href: '/', disabled: false },
+    { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies', disabled: false },
+    { text: 'Proyectos', icon: <ApartmentIcon />, href: '/projects', disabled: false },
+    // { text: 'Stock', icon: <InventoryIcon />, href: '/stock', disabled: true },
+    { text: 'Clientes', icon: <GroupIcon />, href: '/clients', disabled: false },
+    { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotes', disabled: true },
+    { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations', disabled: true },
+    { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises', disabled: true },
+    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty', disabled: false },
   ];
 
   return (
@@ -98,7 +98,8 @@ const Sidebar = ({ collapsed, onToggle }) => {
               <ListItem 
                 button 
                 component="a" 
-                href={item.href}
+                href={item.disabled ? null : item.href}
+                disabled={item.disabled}
                 sx={{
                   borderRadius: '0 2rem 2rem 0',
                   backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
@@ -107,6 +108,8 @@ const Sidebar = ({ collapsed, onToggle }) => {
                     backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
                     color: isActiveRoute(item.href) ? 'black' : 'white',
                   },
+                  pointerEvents: item.disabled ? 'none' : 'auto',
+                  opacity: item.disabled ? 0.5 : 1,
                 }}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>

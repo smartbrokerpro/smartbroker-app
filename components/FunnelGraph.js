@@ -101,8 +101,8 @@ const BarChart = () => {
     },
     layout: {
       padding: {
-        left: 50, // Ajusta el padding para centrar mejor las barras
-        right: 50,
+        left: 0, // Ajusta el padding para centrar mejor las barras
+        right: 0,
       },
     },
   };

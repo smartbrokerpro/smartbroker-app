@@ -1,16 +1,14 @@
-export const formatNumber = (value, decimals) => {
-    if (value == null) return 'N/A'; // Manejar valores nulos o indefinidos
-    const cleanedValue = value.toString().replace(/,/g, ''); // Asegurarse de que el valor sea una cadena antes de reemplazar
-    const numberValue = parseFloat(cleanedValue);
-    const formattedValue = new Intl.NumberFormat('de-DE', {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals
-    }).format(numberValue);
-    return formattedValue;
-  };
-  
-  export const NumberFormatter = ({ value, decimals = 2 }) => {
-    const formattedValue = formatNumber(value, decimals);
-    return <>{formattedValue}</>;
-  };
-  
+export const NumberFormatter = ({ value, unit, prependUnit = true, decimals = 0, appendUnit = false }) => {
+  const formattedNumber = new Intl.NumberFormat('es-CL', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+
+  if (appendUnit && unit) {
+    return `${formattedNumber} ${unit}`;
+  } else if (prependUnit && unit) {
+    return `${unit} ${formattedNumber}`;
+  } else {
+    return formattedNumber;
+  }
+};

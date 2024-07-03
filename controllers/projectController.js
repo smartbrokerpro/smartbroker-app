@@ -262,6 +262,26 @@ export const getProjects = async (req, res) => {
   }
 };
 
+export const getProjectDetails = async (req, res) => {
+  try {
+    const { idProject } = req.query;
+    const client = await clientPromise;
+    const db = client.db('real_estate_management');
+
+    console.log('Conectado a la base de datos, obteniendo detalles del proyecto...');
+
+    const project = await db.collection('projects').findOne({ _id: new ObjectId(idProject) });
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: 'Project not found' });
+    }
+
+    res.status(200).json({ success: true, data: project });
+  } catch (error) {
+    console.error('Error al obtener detalles del proyecto:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
 
 
 // Otros métodos CRUD se mantienen igual...
