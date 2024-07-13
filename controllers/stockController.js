@@ -272,3 +272,38 @@ export const getStock = async (req, res) => {
   }
 };
 
+export const createStock = async (req, res) => {
+  try {
+    const newStock = new Stock(req.body);
+    const savedStock = await newStock.save();
+    res.status(201).json({ success: true, data: savedStock });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const updateStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedStock = await Stock.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updatedStock) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+    res.status(200).json({ success: true, data: updatedStock });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const deleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedStock = await Stock.findByIdAndDelete(id);
+    if (!deletedStock) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+    res.status(200).json({ success: true, data: deletedStock });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
