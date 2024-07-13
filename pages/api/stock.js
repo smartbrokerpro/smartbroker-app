@@ -1,11 +1,11 @@
-import { getStocks, createStock } from '@/controllers/stockController';
+import { getStock, createStock } from '@/controllers/stockController';
 
 export default async function handler(req, res) {
   console.log(`API Request Method: ${req.method}`);
   
   if (req.method === 'GET') {
     console.log('Handling GET request');
-    return getStocks(req, res);
+    return getStock(req, res);
   } else if (req.method === 'POST') {
     console.log('Handling POST request');
     return createStock(req, res);

@@ -58,7 +58,6 @@ ${prompt}
 `;
 };
 
-
 export const handleGPTRequest = async (req, res) => {
   const { prompt, project_id } = req.body;
 
@@ -184,7 +183,6 @@ export const handleGPTRequest = async (req, res) => {
   }
 };
 
-
 export const getStock = async (req, res) => {
   const { idProject } = req.query;
   if (!ObjectId.isValid(idProject)) {
@@ -287,7 +285,7 @@ export const updateStock = async (req, res) => {
     const { id } = req.params;
     const updatedStock = await Stock.findByIdAndUpdate(id, req.body, { new: true });
     if (!updatedStock) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Stock not found' });
     }
     res.status(200).json({ success: true, data: updatedStock });
   } catch (error) {
@@ -295,15 +293,16 @@ export const updateStock = async (req, res) => {
   }
 };
 
-export const deleteProject = async (req, res) => {
+export const deleteStock = async (req, res) => {
   try {
     const { id } = req.params;
     const deletedStock = await Stock.findByIdAndDelete(id);
     if (!deletedStock) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Stock not found' });
     }
     res.status(200).json({ success: true, data: deletedStock });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+

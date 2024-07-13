@@ -125,8 +125,8 @@ const Sidebar = ({ collapsed, onToggle }) => {
         <Divider sx={{borderColor:'#333333'}}/>
         <Box sx={{ pt: 2, height: 50, width: 'auto', position: 'relative' }}>
           <Image
-            src={session.user.company?.logo}
-            alt={session.user.company?.name}
+            src={session?.user?.company?.logo}
+            alt={session?.user?.company?.name}
             width={50}
             height={50}
             style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
