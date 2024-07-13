@@ -8,7 +8,7 @@ export const loadChatContext = async () => {
   }
 
   const client = await clientPromise;
-  const db = client.db('real_estate_management');
+  const db = client.db(process.env.MONGODB_DB);
   const stock = await db.collection('stock').aggregate([
     {
       $lookup: {

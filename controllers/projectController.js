@@ -85,7 +85,7 @@ export const handleGPTRequest = async (req, res) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const collection = db.collection('projects');
 
     switch (action) {
@@ -166,7 +166,7 @@ export const handleGPTRequest = async (req, res) => {
 export const getProjects = async (req, res) => {
   try {
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
 
     console.log('Conectado a la base de datos, obteniendo proyectos...');
 
@@ -266,7 +266,7 @@ export const getProjectDetails = async (req, res) => {
   try {
     const { idProject } = req.query;
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
 
     console.log('Conectado a la base de datos, obteniendo detalles del proyecto...');
 

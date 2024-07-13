@@ -3,13 +3,14 @@ require('dotenv').config();
 const { MongoClient } = require('mongodb');
 
 const uri = process.env.MONGODB_URI;
+const db = process.env.MONGODB;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 async function run() {
   try {
     await client.connect();
     console.log("Connected successfully to server");
-    const database = client.db('real_estate_management');
+    const database = client.db(db);
     const collection = database.collection('projects');
     
     // Verifica cuántos documentos hay en la colección

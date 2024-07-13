@@ -89,7 +89,7 @@ export const handleClientGPTRequest = async (req, res) => {
       }
   
       const client = await clientPromise;
-      const db = client.db('real_estate_management');
+      const db = client.db(process.env.MONGODB_DB);
       const collection = db.collection('clients');
   
       switch (action) {
@@ -163,7 +163,7 @@ export const handleClientGPTRequest = async (req, res) => {
 export const getClients = async (req, res) => {
   try {
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
 
     console.log('Conectado a la base de datos, obteniendo clientes...');
 
@@ -179,7 +179,7 @@ export const getClients = async (req, res) => {
 export const createClient = async (req, res) => {
   try {
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const newClient = { ...req.body, created_at: new Date(), updated_at: new Date() };
     const savedClient = await db.collection('clients').insertOne(newClient);
     res.status(201).json({ success: true, data: { _id: savedClient.insertedId, ...newClient } });
@@ -192,7 +192,7 @@ export const updateClient = async (req, res) => {
   try {
     const { id } = req.params;
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const updatedClient = await db.collection('clients').findOneAndUpdate(
       { _id: new ObjectId(id) },
       { $set: { ...req.body, updated_at: new Date() } },
@@ -211,7 +211,7 @@ export const deleteClient = async (req, res) => {
   try {
     const { id } = req.params;
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const deletedClient = await db.collection('clients').findOneAndDelete({ _id: new ObjectId(id) });
     if (!deletedClient.value) {
       return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
@@ -229,7 +229,7 @@ export const filterClients = async (req, res) => {
     if (origin) filter.origin = origin;
     if (status) filter.status = status;
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const clients = await db.collection('clients').find(filter).toArray();
     res.status(200).json({ success: true, data: clients });
   } catch (error) {

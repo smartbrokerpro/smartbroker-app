@@ -21,6 +21,7 @@ import ColorModeSwitcher from './ColorModeSwitcher';
 const Sidebar = ({ collapsed, onToggle }) => {
   const router = useRouter();
   const { data: session } = useSession();
+  console.log("session", session)
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const handleAlertsClick = (event) => {
@@ -82,7 +83,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
                 alt="Logo"
                 width={collapsed ? 40 : 40}
                 height={40}
-                layout="fixed"
+                // layout="fixed"
                 style={{ cursor: 'pointer' }}
               />
             </Box>
@@ -119,8 +120,18 @@ const Sidebar = ({ collapsed, onToggle }) => {
           ))}
         </List>
       </Box>
+      
       <Box sx={{ px: 2, pb: 2 }}>
         <Divider sx={{borderColor:'#333333'}}/>
+        <Box sx={{ pt: 2, height: 50, width: 'auto', position: 'relative' }}>
+          <Image
+            src={session.user.company?.logo}
+            alt={session.user.company?.name}
+            width={50}
+            height={50}
+            style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
+          />
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb:2 }}>
           <Avatar alt={session?.user?.name} src={session?.user?.image} sx={{ width: 32, height: 32 }} />
           {!collapsed && (

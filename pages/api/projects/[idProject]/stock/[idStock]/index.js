@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   try {
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const stockCollection = db.collection('stock');
     const projectsCollection = db.collection('projects');
     const realEstateCompaniesCollection = db.collection('real_estate_companies');

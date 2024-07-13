@@ -8,8 +8,6 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import '@/styles/globals.css';
 import { lightTheme, darkTheme } from '../utils/theme';
 import { useRouter } from 'next/router';
-import { appWithTranslation } from 'next-i18next';
-import { i18n } from '../next-i18next.config.mjs';
 import { SidebarProvider, useSidebarContext } from '@/context/SidebarContext';
 
 function AppContent({ Component, pageProps }) {
@@ -49,4 +47,4 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   );
 }
 
-export default appWithTranslation(MyApp, { i18n });
+export default MyApp;

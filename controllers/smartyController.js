@@ -107,7 +107,7 @@ export const handleSearchRequest = async (req, res) => {
     }
 
     const client = await clientPromise;
-    const db = client.db('real_estate_management');
+    const db = client.db(process.env.MONGODB_DB);
     const stockCollection = db.collection('stock');
     const projectsCollection = db.collection('projects');
     let results;

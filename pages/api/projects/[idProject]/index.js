@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     try {
       console.log('Conectando a la base de datos...');
       const client = await clientPromise;
-      const db = client.db('real_estate_management');
+      const db = client.db(process.env.MONGODB_DB);
 
       console.log(`Buscando proyecto con id: ${idProject}`);
       const projectId = new ObjectId(idProject);
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
     try {
       console.log('Conectando a la base de datos...');
       const client = await clientPromise;
-      const db = client.db('real_estate_management');
+      const db = client.db(process.env.MONGODB_DB);
 
       const { _id, region_id, county_id, real_estate_company_id, ...projectData } = req.body; // Excluye el campo _id
       console.log(`Actualizando proyecto con id: ${idProject}`);
