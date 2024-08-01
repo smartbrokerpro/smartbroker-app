@@ -32,12 +32,12 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
   };
 
   const handleEdit = () => {
-    router.push(`/projects/${project._id}/edit`);
+    router.push(`/projects/${project?._id}/edit`);
   };
 
   const handleDelete = () => {
     // Aquí puedes agregar la lógica para eliminar el proyecto
-    console.log('Eliminar proyecto:', project._id);
+    console.log('Eliminar proyecto:', project?._id);
   };
 
   return (
@@ -45,7 +45,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
       ref={ref}
       sx={{
         bgcolor: 'background.paper',
-        backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+        backgroundColor: updatedProjectId === project?._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
         transition: 'background-color 0.5s ease-in-out',
         mb: 3,
         position: 'relative'
@@ -60,7 +60,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
           backgroundImage: `url(${project?.gallery ? project?.gallery[0] : fallbackImage})`,
           position: 'relative'
         }}
-        title={project.name}
+        title={project?.name}
       >
         <IconButton
           aria-label="more"
@@ -117,26 +117,26 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
           component="h2"
           sx={{ pb: 0, mb: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         >
-          {project.name}
+          {project?.name}
         </Typography>
         <Typography
           variant="h6"
           component="h6"
           sx={{ pt: 0, mt: 0, mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', fontWeight: '300' }}
         >
-          {project.real_estate_company.name}
+          {project?.real_estate_company.name}
         </Typography>
         <Typography
           variant="body2"
           sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
         >
-          {project.address}{project.county.name && `, ${project.county.name}.`}
+          {project?.address}{project?.county.name && `, ${project?.county.name}.`}
         </Typography>
-        {project.hasStock &&
+        {project?.hasStock &&
           <Chip
             label={
               <>
-                <NumberFormatter value={project.min_price} decimals={0} /> - <NumberFormatter value={project.max_price} decimals={0} /> UF
+                <NumberFormatter value={project?.min_price} decimals={0} /> - <NumberFormatter value={project?.max_price} decimals={0} /> UF
               </>
             }
             color="primary"
@@ -146,7 +146,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
         }
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-          {project.typologies.map((typology, index) => (
+          {project?.typologies.map((typology, index) => (
             <Chip key={index} label={typology} color="secondary" variant="outlined" size="small" />
           ))}
         </Box>
@@ -155,14 +155,14 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
             color="primary"
             variant="contained"
             onClick={() => {
-              if (project.hasStock) {
-                router.push(`/projects/${project._id}/stock`);
+              if (project?.hasStock) {
+                router.push(`/projects/${project?._id}/stock`);
               } else {
-                router.push(`/projects/${project._id}/create-stock`);
+                router.push(`/projects/${project?._id}/create-stock`);
               }
             }}
           >
-            {project.hasStock ? 'Ver Stock' : 'Cargar Stock'}
+            {project?.hasStock ? 'Ver Stock' : 'Cargar Stock'}
           </Button>
         </Box>
       </CardContent>

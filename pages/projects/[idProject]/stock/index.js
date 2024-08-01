@@ -27,10 +27,12 @@ import { useTheme } from '@mui/material/styles';
 import { NumberFormatter } from '@/utils/formatNumber';
 import LottieLoader from '@/components/LottieLoader';
 import QuotationDialog from '@/components/QuotationDialog';
+import { useSession } from 'next-auth/react';
 
 export default function StockPage() {
   const router = useRouter();
   const { idProject } = router.query;
+  const { data: session, status } = useSession();
   const [stock, setStock] = useState([]);
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,11 +53,14 @@ export default function StockPage() {
   const [openCommercialConditions, setOpenCommercialConditions] = useState(false);
 
   useEffect(() => {
-    if (idProject) {
-      fetchProject();
-      fetchStock();
+    if (status === 'authenticated') {
+      console.log(session.user.organization._id, status)
+      if (idProject) {
+        fetchProject();
+        fetchStock();
+      }
     }
-  }, [idProject]);
+  }, [idProject, status]);
 
   useEffect(() => {
     if (updatedStockId) {
@@ -68,11 +73,11 @@ export default function StockPage() {
 
   async function fetchProject() {
     try {
-      const response = await fetch(`/api/projects/details/${idProject}`);
+      const response = await fetch(`/api/projects/details/${idProject}?organizationId=${session.user.organization._id}`);
       const data = await response.json();
       if (data.success) {
         setProject(data.data);
-        console.log(data.data)
+        console.log(data.data);
       } else {
         console.error('Error fetching project details:', data.error);
       }
@@ -85,7 +90,7 @@ export default function StockPage() {
   async function fetchStock() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/projects/${idProject}/stock`);
+      const response = await fetch(`/api/projects/${idProject}/stock?organizationId=${session.user.organization._id}`);
       const data = await response.json();
       if (data.success) {
         setStock(data.data);
@@ -108,13 +113,20 @@ export default function StockPage() {
   
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/gpt/stock-gpt-handler', {
+      const response = await fetch(`/api/gpt/[model]-gpt-handler`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: updatePrompt, project_id: idProject, apartment: expandedRow }),
-      });
+        credentials: 'include',
+        body: JSON.stringify({ 
+          prompt: updatePrompt, 
+          project_id: idProject, 
+          organizationId: session.user.organization._id,
+          userId: session.user._id,
+          userEmail: session.user.email 
+        }),
+       });
   
       const result = await response.json();
   
@@ -135,6 +147,10 @@ export default function StockPage() {
         } else {
           fetchStock();
         }
+  
+        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+        window.dispatchEvent(creditUpdateEvent);
+  
       } else {
         console.error('Error en la operación:', result);
         setNotification({ open: true, message: result.error || 'Error en la operación', severity: 'error' });
@@ -145,6 +161,8 @@ export default function StockPage() {
     }
     setIsSubmitting(false);
   }
+  
+  
 
   function handleSearch(e) {
     setSearchQuery(e.target.value);

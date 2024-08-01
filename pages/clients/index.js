@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -26,6 +26,7 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material';
+import PromptInput from '@/components/PromptInput';
 import { TableRows, GridView, MoreVert, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import { useSidebarContext } from '@/context/SidebarContext';
@@ -33,6 +34,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useTheme } from '@mui/material/styles';
 import LottieLoader from '@/components/LottieLoader';
 import ClientCard from '@/components/ClientCard';
+import { useSession } from 'next-auth/react';
 
 const fallbackImage = '/images/avatar-fallback.jpg';
 
@@ -52,6 +54,7 @@ const getStatusColor = (status) => {
 };
 
 export default function ClientsPage() {
+  const { data: session, status } = useSession();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatePrompt, setUpdatePrompt] = useState('');
@@ -73,27 +76,34 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState(null);
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    if (status === 'authenticated') {
+      console.log('Usuario autenticado, fetching clientes...');
+      fetchClients();
+    }
+  }, [status]);
 
   useEffect(() => {
     if (updatedClientId) {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [clients]);
+  }, [updatedClientId]);
 
-  async function fetchClients() {
+  const fetchClients = useCallback(async () => {
+    console.log('Fetching clientes para la organización:', session.user.organization._id);
     setIsRefetching(true);
-    const response = await fetch('/api/clients');
+    const response = await fetch(`/api/clients?organizationId=${session.user.organization._id}`);
     const data = await response.json();
     if (data.success) {
       setClients(data.data);
+      console.log('Clientes fetch exitoso:', data.data);
+    } else {
+      console.error('Error fetching clientes:', data);
     }
     setIsRefetching(false);
     setLoading(false);
-  }
+  }, [session]);
 
-  async function handleUpdateClient(e) {
+  const handleUpdateClient = async (e) => {
     e.preventDefault();
     if (!updatePrompt.trim()) {
       setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
@@ -102,49 +112,56 @@ export default function ClientsPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/gpt/clients-gpt-handler', {
+      const response = await fetch('/api/gpt/clients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: updatePrompt }),
+        credentials: 'include',
+        body: JSON.stringify({
+          prompt: updatePrompt,
+          organizationId: session.user.organization._id,
+          userId: session.user._id,
+          userEmail: session.user.email,
+          modelName: 'clients'
+        }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        console.log('Operación exitosa:', result);
         setNotification({ open: true, message: 'Operación exitosa', severity: 'success' });
         setUpdatePrompt('');
 
         const updatedId = result.updatedClientId || result.deletedClientId || result.createdClientId;
         if (updatedId) {
-          console.log(`Updated/Deleted/Created client ID: ${updatedId}`);
           setUpdatedClientId(updatedId);
           fetchClients();
           setTimeout(() => {
-            console.log(`Removing highlight for client ID: ${updatedId}`);
             setUpdatedClientId(null);
           }, 3000);
         } else {
           fetchClients();
         }
+
+        // Disparar evento personalizado para actualizar créditos
+        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+        window.dispatchEvent(creditUpdateEvent);
+
       } else {
-        console.error('Error en la operación:', result);
         setNotification({ open: true, message: result.error || 'Error en la operación', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error en la operación:', error);
       setNotification({ open: true, message: 'Error en la operación', severity: 'error' });
     }
     setIsSubmitting(false);
-  }
+  };
 
-  function handleSearch(e) {
+  const handleSearch = (e) => {
     setSearchQuery(e.target.value);
-  }
+  };
 
-  const filteredClients = clients.filter(client => {
+  const filteredClients = useMemo(() => clients.filter(client => {
     const query = searchQuery.toLowerCase();
     return (
       (client.first_name && client.first_name.toLowerCase().includes(query)) ||
@@ -155,31 +172,31 @@ export default function ClientsPage() {
       (client.origin && client.origin.toLowerCase().includes(query)) ||
       (client.status && client.status.toLowerCase().includes(query))
     );
-  });
+  }), [clients, searchQuery]);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleMenuClick = (event, client) => {
+  const handleMenuClick = useCallback((event, client) => {
     setAnchorEl(event.currentTarget);
     setSelectedClient(client);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedClient(null);
-  };
+  }, []);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     router.push(`/clients/${selectedClient._id}/edit`);
     handleMenuClose();
-  };
+  }, [selectedClient, handleMenuClose, router]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     console.log('Eliminar cliente:', selectedClient._id);
     handleMenuClose();
-  };
+  }, [selectedClient, handleMenuClose]);
+
+  const handleChangePage = useCallback((event, newPage) => {
+    setPage(newPage);
+  }, []);
 
   if (loading) {
     return (
@@ -221,7 +238,7 @@ export default function ClientsPage() {
         )}
         {viewMode === 'grid' ? (
           <Grid container spacing={4}>
-            {filteredClients.map(client => (
+            {filteredClients.slice(0, filteredClients.length).map(client => (
               <Grid item key={client._id} xs={12} sm={6} md={4}>
                 <ClientCard
                   ref={el => clientRefs.current[client._id] = el}
@@ -269,18 +286,18 @@ export default function ClientsPage() {
                         <Chip label={client.origin} color="primary" variant="contained" size="small" />
                       </TableCell>
                       <TableCell>
-                      <Chip
-                        label={client.status}
-                        sx={{
-                          borderWidth:'1px',
-                          borderStyle:'solid',
-                          borderColor: getStatusColor(client.status),
-                          color: getStatusColor(client.status),
-                          backgroundColor:'white',
-                          fontWeight: 300,
-                        }}
-                        size="small"
-                      />
+                        <Chip
+                          label={client.status}
+                          sx={{
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            borderColor: getStatusColor(client.status),
+                            color: getStatusColor(client.status),
+                            backgroundColor: 'white',
+                            fontWeight: 300,
+                          }}
+                          size="small"
+                        />
                       </TableCell>
                       <TableCell>
                         <IconButton
@@ -308,49 +325,14 @@ export default function ClientsPage() {
           </>
         )}
       </Box>
-      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
-        <form onSubmit={handleUpdateClient}>
-          <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <TextField
-              aria-label="Crea, modifica o elimina clientes"
-              placeholder="Crea, modifica o elimina clientes"
-              multiline
-              minRows={1}
-              maxRows={6}
-              variant="outlined"
-              fullWidth
-              value={updatePrompt}
-              onChange={(e) => setUpdatePrompt(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateClient(e); }}
-              InputProps={{
-                sx: {
-                  padding: '8px',
-                  paddingLeft: '1rem',
-                  borderRadius: '1rem',
-                  fontSize: '.9rem',
-                  fontFamily: 'Poppins',
-                  backgroundColor: '#fff',
-                  border: '1px solid #fff',
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              type="submit"
-              disabled={isSubmitting}
-              sx={{ minWidth: 100, ml: '6px', borderRadius: '2rem', pl: 3, pr: 3 }}
-            >
-              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Realizar'}
-            </Button>
-          </Box>
-        </form>
+      <Box sx={{ position: 'sticky', bottom: '84px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+        <PromptInput modelName="clients" onSuccess={handlePromptSuccess} />
       </Box>
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
         onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
         <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
           {notification.message}

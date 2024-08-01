@@ -2,6 +2,7 @@ import Stock from '@/models/stockModel';
 import OpenAI from 'openai';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { logPrompt } from '@/utils/logPrompt';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -11,6 +12,7 @@ const stockModel = {
   "stock": {
     "_id": "ObjectId",
     "project_id": "ObjectId",
+    "organization_id": "ObjectId",
     "apartment": "string",
     "role": "string",
     "model": "string",
@@ -39,18 +41,18 @@ const generateContext = (prompt, projectId) => {
 Dado el siguiente modelo para la colección de stock en MongoDB:
 ${JSON.stringify(stockModel, null, 2)}
 
-Por favor, devuelve solo el comando MongoDB necesario en formato JSON puro y minificado para la operación solicitada en el siguiente texto. No incluyas ninguna explicación adicional. Asegúrate de incluir la acción a realizar ("create", "update", "delete", "filter") como parte de la respuesta JSON. Todas las peticiones deben incluir obligatoriamente los parámetros "apartment" y "project_id", donde "project_id" es un ObjectId.
- 
-MUY IMPORTANTE: SIEMPRE INCORPORA EL "project_id"
+Por favor, devuelve solo el comando MongoDB necesario en formato JSON puro y minificado para la operación solicitada en el siguiente texto. No incluyas ninguna explicación adicional. Asegúrate de incluir la acción a realizar ("create", "update", "delete", "filter") como parte de la respuesta JSON. Todas las peticiones deben incluir obligatoriamente los parámetros "apartment" y "project_id", donde "project_id" es ObjectId.
+
+MUY IMPORTANTE: SIEMPRE INCORPORA EL "project_id": "${projectId}"
 
 Ejemplos de posibles entradas:
-1. "Crear una nueva unidad de stock con el apartamento '204' y project_id '${projectId}'."
+1. "Crear una nueva unidad de stock con el apartamento '204'."
    Respuesta esperada: {"action": "create", "command": { "apartment": "204", "project_id": { "$oid": "${projectId}" } }}
-2. "Actualizar la orientación a NORTE del apartamento '306' en el project_id '${projectId}'."
-   Respuesta esperada: {"action": "update", "command": { "q": { "apartment": "306", "project_id": { "$oid": "${projectId}" } }, "u": { "$set": { "orientation": "NORTE" } } }}
-3. "Eliminar la unidad de stock con el apartamento '306' en el project_id '${projectId}'."
+2. "Cambia el valor de la unidad 306 a 3000 UF"
+   Respuesta esperada: {"action": "update", "command": { "q": { "apartment": "306", "project_id": { "$oid": "${projectId}" } }, "u": { "$set": { "current_list_price": 3000 } } }}
+3. "Eliminar la unidad de stock con el apartamento '306'."
    Respuesta esperada: {"action": "delete", "command": { "apartment": "306", "project_id": { "$oid": "${projectId}" } }}
-4. "Filtrar las unidades de stock que tengan valores de unidad entre 2000 y 4000 UF en el project_id '${projectId}'."
+4. "Filtrar las unidades de stock que tengan valores de unidad entre 2000 y 4000 UF."
    Respuesta esperada: {"action": "filter", "command": { "project_id": { "$oid": "${projectId}" }, "current_list_price": { "$gte": 2000, "$lte": 4000 } }}
 
 Entrada del usuario:
@@ -59,28 +61,40 @@ ${prompt}
 };
 
 export const handleGPTRequest = async (req, res) => {
-  const { prompt, project_id } = req.body;
+  const { prompt, project_id, organizationId, userId, userEmail } = req.body;
 
-  if (!prompt || !project_id) {
-    console.log('Se requiere un prompt y project_id');
-    return res.status(400).json({ error: 'Se requiere un prompt y project_id' });
+  if (!prompt || !project_id || !organizationId) {
+    console.log('Se requiere un prompt, project_id y organization_id');
+    return res.status(400).json({ error: 'Se requiere un prompt, project_id y organization_id' });
   }
 
   const context = generateContext(prompt, project_id);
-  console.log('Contexto generado para GPT-4:', context);
+  console.log('Contexto generado para GPT-3.5-turbo:', context);
 
   try {
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+
+    // Verificar asociación de proyecto y organización
+    const project = await db.collection('projects').findOne({ _id: new ObjectId(project_id), organization_id: new ObjectId(organizationId) });
+    if (!project) {
+      console.log('Proyecto no encontrado para el organization_id proporcionado');
+      return res.status(400).json({ error: 'Proyecto no encontrado para el organization_id proporcionado' });
+    }
+    console.log('Proyecto verificado con organization_id:', organizationId);
+
     const gptResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: context },
         { role: 'user', content: `Texto: ${prompt}` }
       ],
       max_tokens: 150,
+      temperature: 0.1 // Temperatura baja para reducir la creatividad
     });
 
     const message = gptResponse.choices[0].message.content.trim();
-    console.log('Respuesta de GPT-4:', message);
+    console.log('Respuesta de GPT-3.5-turbo:', message);
 
     let response;
     try {
@@ -88,90 +102,114 @@ export const handleGPTRequest = async (req, res) => {
       console.log('Respuesta JSON parseada:', response);
     } catch (e) {
       console.log('Error al parsear JSON:', e);
-      return res.status(400).json({ error: 'Formato JSON inválido desde GPT-4', gptResponse: message });
+      return res.status(400).json({ error: 'Formato JSON inválido desde GPT-3.5-turbo', gptResponse: message });
     }
 
     const { action, command } = response;
 
     if (!action || !command) {
       console.log('Acción o comando no reconocidos en la respuesta:', response);
-      return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-4', gptResponse: message });
+      return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-3.5-turbo', gptResponse: message });
     }
 
-    const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB);
     const collection = db.collection('stock');
+
+    // Obtener la organización y actualizar los créditos
+    const organization = await db.collection('organizations').findOne({ _id: new ObjectId(organizationId) });
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    const tokensUsed = gptResponse.usage.total_tokens;
+    const creditsUsed = Math.ceil(tokensUsed / 1000);
+
+    if (organization.credits.current < creditsUsed) {
+      return res.status(403).json({ error: 'Insufficient credits' });
+    }
+
+    await db.collection('organizations').updateOne(
+      { _id: new ObjectId(organizationId) },
+      { $inc: { 'credits.current': -creditsUsed } }
+    );
+
+    await logPrompt(userId, userEmail, organization, creditsUsed, tokensUsed, true, prompt, 'gpt-3.5-turbo');
 
     switch (action) {
       case 'create':
         console.log('Procesando una creación');
-        const newStock = await collection.insertOne({ ...command, project_id: new ObjectId(command.project_id.$oid), updatedAt: new Date() });
+        const newStock = await collection.insertOne({ ...command, project_id: new ObjectId(project_id), organization_id: new ObjectId(organizationId), updatedAt: new Date() });
         console.log('Unidad de stock creada:', newStock);
-        res.status(201).json({ success: true, data: newStock.ops ? newStock.ops[0] : { _id: newStock.insertedId, ...command } });
+        res.status(201).json({ success: true, data: newStock.ops ? newStock.ops[0] : { _id: newStock.insertedId, ...command }, credits: organization.credits.current - creditsUsed });
         break;
       case 'update':
         console.log('Procesando una actualización');
         const { q, u } = command;
 
-        if (!q || !u || !q.apartment || !q.project_id || !u.$set) {
-          console.log('Formato de respuesta incompleto desde GPT-4:', response);
-          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-4', gptResponse: message });
+        if (!q || !u || !q.apartment || !u.$set) {
+          console.log('Formato de respuesta incompleto desde GPT-3.5-turbo:', response);
+          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-3.5-turbo', gptResponse: message });
         }
 
-        const projectObjectId = new ObjectId(q.project_id.$oid);
+        //Verificar la existencia del stock
+        console.log('find one to update', { apartment: q.apartment, project_id: new ObjectId(project_id) })
+        const stockToUpdate = await collection.findOne({ apartment: q.apartment, project_id: new ObjectId(project_id) });
+        console.log('Stock encontrado para actualizar:', stockToUpdate);
+        if (!stockToUpdate) {
+          console.log('Stock no encontrado para la actualización');
+          return res.status(404).json({ error: 'Stock no encontrado para la actualización' });
+        }
+
+        // console.log('ID del stock a actualizar:', stockToUpdate._id);
         const updatedStock = await collection.findOneAndUpdate(
-          { apartment: q.apartment, project_id: projectObjectId },
+          { _id: stockToUpdate._id },
           { $set: { ...u.$set, updatedAt: new Date() } },
-          { returnDocument: 'after' }
+          { returnOriginal: false, returnDocument: 'after' } // Asegurarse de que se devuelva el documento actualizado
         );
 
         console.log('Respuesta de findOneAndUpdate:', updatedStock);
 
         if (updatedStock) {
-          console.log('Unidad de stock actualizada:', updatedStock);
-          return res.status(200).json({ success: true, data: updatedStock });
+          console.log('Stock actualizado:', updatedStock);
+          res.status(200).json({ success: true, data: updatedStock, credits: organization.credits.current - creditsUsed });
         } else {
-          console.log('Unidad de stock no encontrada para la actualización');
-          return res.status(404).json({ error: 'Unidad de stock no encontrada para la actualización' });
+          console.log('Stock no encontrado para la actualización después del intento');
+          res.status(404).json({ error: 'Stock no encontrado para la actualización' });
         }
         break;
       case 'delete':
         console.log('Procesando una eliminación');
         const deleteCmd = command;
-        console.log('Filtro de eliminación:', deleteCmd);
 
         if (!deleteCmd.apartment || !deleteCmd.project_id) {
-          console.log('Formato de respuesta incompleto desde GPT-4:', response);
-          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-4', gptResponse: message });
+          console.log('Formato de respuesta incompleto desde GPT-3.5-turbo:', response);
+          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-3.5-turbo', gptResponse: message });
         }
 
-        const projectIdObject = new ObjectId(deleteCmd.project_id.$oid);
-        const deletedStock = await collection.findOneAndDelete({ apartment: deleteCmd.apartment, project_id: projectIdObject });
+        const deletedStock = await collection.findOneAndDelete({ apartment: deleteCmd.apartment, project_id: new ObjectId(project_id), organization_id: new ObjectId(organizationId) });
 
         console.log("Respuesta de deletedStock:", Boolean(deletedStock), deletedStock);
-        if (deletedStock) {
+        if (deletedStock.value) {
           console.log('Unidad de stock eliminada:', deletedStock.value);
-          return res.status(200).json({ success: true, data: deletedStock.value });
+          res.status(200).json({ success: true, data: deletedStock.value, credits: organization.credits.current - creditsUsed });
         } else {
           console.log('Unidad de stock no encontrada para la eliminación');
-          return res.status(404).json({ error: 'Unidad de stock no encontrada para la eliminación' });
+          res.status(404).json({ error: 'Unidad de stock no encontrada para la eliminación' });
         }
         break;
       case 'filter':
         console.log('Procesando un filtro');
         const filterCriteria = command;
-        console.log('Criterios de filtro:', filterCriteria);
 
         if (!filterCriteria.project_id) {
-          console.log('Formato de respuesta incompleto desde GPT-4:', response);
-          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-4', gptResponse: message });
+          console.log('Formato de respuesta incompleto desde GPT-3.5-turbo:', response);
+          return res.status(400).json({ error: 'Formato de respuesta incompleto desde GPT-3.5-turbo', gptResponse: message });
         }
 
         filterCriteria.project_id = new ObjectId(filterCriteria.project_id.$oid);
 
         const stocks = await collection.find(filterCriteria).toArray();
         console.log('Unidades de stock filtradas:', stocks);
-        return res.status(200).json({ success: true, data: stocks });
+        return res.status(200).json({ success: true, data: stocks, credits: organization.credits.current - creditsUsed });
         break;
       default:
         console.log('Acción no válida en el comando:', response);
@@ -184,9 +222,9 @@ export const handleGPTRequest = async (req, res) => {
 };
 
 export const getStock = async (req, res) => {
-  const { idProject } = req.query;
-  if (!ObjectId.isValid(idProject)) {
-    return res.status(400).json({ success: false, error: 'Invalid project ID' });
+  const { idProject, organizationId } = req.query;
+  if (!ObjectId.isValid(idProject) || !ObjectId.isValid(organizationId)) {
+    return res.status(400).json({ success: false, error: 'Invalid project ID or organization ID' });
   }
   try {
     const client = await clientPromise;
@@ -197,7 +235,8 @@ export const getStock = async (req, res) => {
     const stock = await db.collection('stock').aggregate([
       {
         $match: {
-          project_id: new ObjectId(idProject)
+          project_id: new ObjectId(idProject),
+          organization_id: new ObjectId(organizationId)
         }
       },
       {
@@ -271,8 +310,14 @@ export const getStock = async (req, res) => {
 };
 
 export const createStock = async (req, res) => {
+  const { organizationId } = req.body;
+
+  if (!organizationId) {
+    return res.status(400).json({ error: 'organizationId is required' });
+  }
+
   try {
-    const newStock = new Stock(req.body);
+    const newStock = new Stock({ ...req.body, organization_id: new ObjectId(organizationId) });
     const savedStock = await newStock.save();
     res.status(201).json({ success: true, data: savedStock });
   } catch (error) {
@@ -281,9 +326,19 @@ export const createStock = async (req, res) => {
 };
 
 export const updateStock = async (req, res) => {
+  const { id } = req.params;
+  const { organizationId } = req.body;
+
+  if (!organizationId) {
+    return res.status(400).json({ error: 'organizationId is required' });
+  }
+
   try {
-    const { id } = req.params;
-    const updatedStock = await Stock.findByIdAndUpdate(id, req.body, { new: true });
+    const updatedStock = await Stock.findOneAndUpdate(
+      { _id: id, organization_id: new ObjectId(organizationId) },
+      req.body,
+      { new: true }
+    );
     if (!updatedStock) {
       return res.status(404).json({ success: false, message: 'Stock not found' });
     }
@@ -294,9 +349,15 @@ export const updateStock = async (req, res) => {
 };
 
 export const deleteStock = async (req, res) => {
+  const { id } = req.params;
+  const { organizationId } = req.body;
+
+  if (!organizationId) {
+    return res.status(400).json({ error: 'organizationId is required' });
+  }
+
   try {
-    const { id } = req.params;
-    const deletedStock = await Stock.findByIdAndDelete(id);
+    const deletedStock = await Stock.findOneAndDelete({ _id: id, organization_id: new ObjectId(organizationId) });
     if (!deletedStock) {
       return res.status(404).json({ success: false, message: 'Stock not found' });
     }
@@ -305,4 +366,3 @@ export const deleteStock = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
-

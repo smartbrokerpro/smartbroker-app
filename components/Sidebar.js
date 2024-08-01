@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signOut } from 'next-auth/react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Tooltip, Divider, Box, Avatar, Badge, Menu, MenuItem, IconButton, Typography } from '@mui/material';
+import { Drawer, List, ListItem, ListItemIcon, ListItemText, Tooltip, Divider, Box, Avatar, Badge, Menu, MenuItem, IconButton, Typography, LinearProgress } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import ApartmentIcon from '@mui/icons-material/Apartment';
@@ -21,8 +21,31 @@ import ColorModeSwitcher from './ColorModeSwitcher';
 const Sidebar = ({ collapsed, onToggle }) => {
   const router = useRouter();
   const { data: session } = useSession();
-  console.log("session", session)
+  console.log("session", session);
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const [currentCredits, setCurrentCredits] = useState(0);
+  const [maxCredits, setMaxCredits] = useState(4000); // Total de créditos
+
+  useEffect(() => {
+    const fetchCredits = async () => {
+      if (session?.user?.organization?._id) {
+        try {
+          const response = await fetch(`/api/organization/${session.user.organization._id}/credits`);
+          if (response.ok) {
+            const data = await response.json();
+            setCurrentCredits(data.credits.current);
+            setMaxCredits(data.credits.max);
+          } else {
+            console.error('Failed to fetch credits');
+          }
+        } catch (error) {
+          console.error('Error fetching credits:', error);
+        }
+      }
+    };
+
+    fetchCredits();
+  }, [session]);
 
   const handleAlertsClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -42,13 +65,26 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { text: 'Inicio', icon: <HomeIcon />, href: '/', disabled: false },
     { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies', disabled: false },
     { text: 'Proyectos', icon: <ApartmentIcon />, href: '/projects', disabled: false },
-    // { text: 'Stock', icon: <InventoryIcon />, href: '/stock', disabled: true },
     { text: 'Clientes', icon: <GroupIcon />, href: '/clients', disabled: false },
     { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotes', disabled: true },
     { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations', disabled: true },
     { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises', disabled: true },
     { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty', disabled: false },
   ];
+
+  useEffect(() => {
+    // Event listener for credit updates
+    const handleCreditUpdate = (event) => {
+      const { credits } = event.detail;
+      setCurrentCredits(credits);
+    };
+
+    window.addEventListener('creditUpdate', handleCreditUpdate);
+
+    return () => {
+      window.removeEventListener('creditUpdate', handleCreditUpdate);
+    };
+  }, []);
 
   return (
     <Drawer
@@ -83,7 +119,6 @@ const Sidebar = ({ collapsed, onToggle }) => {
                 alt="Logo"
                 width={collapsed ? 40 : 40}
                 height={40}
-                // layout="fixed"
                 style={{ cursor: 'pointer' }}
               />
             </Box>
@@ -125,8 +160,8 @@ const Sidebar = ({ collapsed, onToggle }) => {
         <Divider sx={{borderColor:'#333333'}}/>
         <Box sx={{ pt: 2, height: 50, width: 'auto', position: 'relative' }}>
           <Image
-            src={session?.user?.company?.logo}
-            alt={session?.user?.company?.name}
+            src={session?.user?.organization?.logo}
+            alt={session?.user?.organization?.name}
             width={50}
             height={50}
             style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
@@ -142,6 +177,18 @@ const Sidebar = ({ collapsed, onToggle }) => {
           )}
         </Box>
         <Divider sx={{borderColor:'#222222', borderStyle:'dotted'}}/>
+        
+        {/* Nueva sección para los créditos */}
+        <Box sx={{ mt: 2, mb: 2 }}>
+          
+          <LinearProgress variant="determinate" value={(currentCredits / maxCredits) * 100} sx={{ height: 10, borderRadius: 5, backgroundColor: 'gray', '& .MuiLinearProgress-bar': { backgroundColor: '#86DB2E' } }} />
+          <Typography variant="caption" sx={{ color: 'white' }}>
+            {currentCredits} / {maxCredits} créditos
+          </Typography>
+        </Box>
+
+        <Divider sx={{borderColor:'#222222', borderStyle:'dotted'}}/>
+        
         <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', mt: 2 }}>
           <Tooltip title="Configuración" placement="top">
             <IconButton sx={{ color: 'white' }}>
@@ -150,7 +197,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </Tooltip>
           <Tooltip title="Alertas" placement="top">
             <IconButton sx={{ color: 'white' }} onClick={handleAlertsClick}>
-              <Badge badgeContent={3} color="success">
+              <Badge badgeContent={1} color="success">
                 <NotificationsIcon />
               </Badge>
             </IconButton>
@@ -168,9 +215,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         >
-          <MenuItem onClick={handleAlertsClose}>Alerta 1</MenuItem>
-          <MenuItem onClick={handleAlertsClose}>Alerta 2</MenuItem>
-          <MenuItem onClick={handleAlertsClose}>Alerta 3</MenuItem>
+          <MenuItem onClick={handleAlertsClose}>Sin alertas</MenuItem>
         </Menu>
       </Box>
     </Drawer>

@@ -1,9 +1,10 @@
+// /pages/api/auth/[...nextauth].js
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import clientPromise from "../../../lib/mongodb";
 import { ObjectId } from 'mongodb';
 
-async function findUserWithCompany(email) {
+async function findUserWithOrganization(email) {
   const client = await clientPromise;
   const db = client.db(process.env.MONGODB_DB);
 
@@ -16,19 +17,19 @@ async function findUserWithCompany(email) {
 
   if (!user) return null;
 
-  const companyId = user.companyId;
-  console.log('Querying company with id:', companyId);
+  const organizationId = user.organizationId;
+  console.log('Querying organization with id:', organizationId);
 
-  const company = await db.collection('companies').findOne({ _id: new ObjectId(companyId) });
-  console.log('Company found:', company);
+  const organization = await db.collection('organizations').findOne({ _id: new ObjectId(organizationId) });
+  console.log('Organization found:', organization);
 
-  if (!company) return null;
+  if (!organization) return null;
 
-  user.company = company;
+  user.organization = organization;
   return user;
 }
 
-export default NextAuth({
+const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -58,7 +59,6 @@ export default NextAuth({
     },
     async session({ session, token }) {
       if (token && token.user) {
-        console.log('Token user in session callback:', token.user);
         session.user = token.user;
       }
       if (token?.error) {
@@ -68,19 +68,17 @@ export default NextAuth({
     },
     async jwt({ token, account, profile }) {
       if (account && profile) {
-        console.log('Profile received in jwt callback:', profile);
-        const userWithCompany = await findUserWithCompany(profile.email);
-        if (userWithCompany) {
-          console.log('User with company in jwt callback:', userWithCompany);
+        const userWithOrganization = await findUserWithOrganization(profile.email);
+        if (userWithOrganization) {
           token.user = {
-            id: userWithCompany._id.toString(),
-            name: userWithCompany.name,
-            email: userWithCompany.email,
-            company: userWithCompany.company,
-            permissions: userWithCompany.permissions
+            id: userWithOrganization._id.toString(),
+            name: userWithOrganization.name,
+            email: userWithOrganization.email,
+            organization: userWithOrganization.organization,
+            permissions: userWithOrganization.permissions
           };
         } else {
-          console.log('User or company not found');
+          console.log('User or organization not found');
           token.error = 'AuthError';
           return { ...token, error: 'AuthError' };
         }
@@ -88,12 +86,15 @@ export default NextAuth({
       return token;
     },
     async signIn({ user, account, profile }) {
-      const userWithCompany = await findUserWithCompany(profile.email);
-      if (!userWithCompany) {
-        console.log('User or company not found');
-        return '/auth/sign-in?error=AuthError'; // Redirigir al inicio de sesión con el error
+      const userWithOrganization = await findUserWithOrganization(profile.email);
+      if (!userWithOrganization) {
+        console.log('User or organization not found');
+        return '/auth/sign-in?error=AuthError';
       }
       return true;
     }
   }
-});
+};
+
+export default NextAuth(authOptions);
+export { authOptions };

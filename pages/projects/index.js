@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -27,6 +27,7 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material';
+import PromptInput from '@/components/PromptInput';
 import { TableRows, GridView, MoreVert } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import { useSidebarContext } from '@/context/SidebarContext';
@@ -37,10 +38,12 @@ import ProjectCard from '@/components/ProjectCard';
 import { Edit as EditIcon, Delete as DeleteIcon, AddBox as EditStockIcon } from '@mui/icons-material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import { NumberFormatter } from '@/utils/formatNumber';
+import { useSession } from 'next-auth/react';
 
-const fallbackImage = '/images/fallback.jpg'; // Asegúrate de que la ruta sea correcta y la imagen exista en esa ruta
+const fallbackImage = '/images/fallback.jpg';
 
-export default function ProjectsPage() {
+const ProjectsPage = () => {
+  const { data: session, status } = useSession(); 
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatePrompt, setUpdatePrompt] = useState('');
@@ -51,8 +54,9 @@ export default function ProjectsPage() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [updatedProjectId, setUpdatedProjectId] = useState(null);
-  const [isRefetching, setIsRefetching] = useState(false); // Nuevo estado para manejar el refetch
+  const [isRefetching, setIsRefetching] = useState(false);
   const [page, setPage] = useState(1);
+  const [promptFocused, setPromptFocused] = useState(false);
   const rowsPerPage = 10;
   const { collapsed } = useSidebarContext();
   const theme = useTheme();
@@ -62,8 +66,11 @@ export default function ProjectsPage() {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (status === 'authenticated') {
+      console.log('Usuario autenticado, fetching proyectos...');
+      fetchProjects();
+    }
+  }, [status]);
 
   useEffect(() => {
     if (updatedProjectId) {
@@ -71,16 +78,26 @@ export default function ProjectsPage() {
     }
   }, [projects]);
 
-  async function fetchProjects() {
+  useEffect(() => {
+    if (updatedProjectId) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [updatedProjectId]);
+
+  const fetchProjects = useCallback(async () => {
+    console.log('Fetching proyectos para la organización:', session.user.organization._id);
     setIsRefetching(true);
-    const response = await fetch('/api/projects');
+    const response = await fetch(`/api/projects?organizationId=${session.user.organization._id}`);
     const data = await response.json();
     if (data.success) {
       setProjects(data.data);
+      console.log('Proyectos fetch exitoso:', data.data);
+    } else {
+      console.error('Error fetching proyectos:', data);
     }
     setIsRefetching(false);
     setLoading(false);
-  }
+  }, [session]);
 
   async function handleUpdateProject(e) {
     e.preventDefault();
@@ -88,52 +105,69 @@ export default function ProjectsPage() {
       setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
       return;
     }
-
+  
     setIsSubmitting(true);
-    try {
-      const response = await fetch('/api/gpt/gpt-handler', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: updatePrompt }),
-      });
-
+  try {
+    const response = await fetch('/api/gpt/projects', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ 
+        prompt: updatePrompt, 
+        organizationId: session.user.organization._id, 
+        userId: session.user._id, 
+        userEmail: session.user.email,
+        modelName: 'projects'
+      }),
+    });
+  
       const result = await response.json();
-
+  
       if (response.ok) {
-        console.log('Operación exitosa:', result);
         setNotification({ open: true, message: 'Operación exitosa', severity: 'success' });
         setUpdatePrompt('');
-
+  
         const updatedId = result.updatedProjectId || result.deletedProjectId || result.createdProjectId;
         if (updatedId) {
-          console.log(`Updated/Deleted/Created project ID: ${updatedId}`);
           setUpdatedProjectId(updatedId);
-          fetchProjects(); // Refetch projects to update the list
+          fetchProjects();
           setTimeout(() => {
-            console.log(`Removing highlight for project ID: ${updatedId}`);
             setUpdatedProjectId(null);
           }, 3000);
         } else {
-          fetchProjects(); // Refetch projects even if no specific ID is returned
+          fetchProjects();
         }
+  
+        // Disparar evento personalizado para actualizar créditos
+        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+        window.dispatchEvent(creditUpdateEvent);
+        
       } else {
-        console.error('Error en la operación:', result);
         setNotification({ open: true, message: result.error || 'Error en la operación', severity: 'error' });
       }
     } catch (error) {
-      console.error('Error en la operación:', error);
       setNotification({ open: true, message: 'Error en la operación', severity: 'error' });
     }
     setIsSubmitting(false);
   }
+  
+  const handlePromptSuccess = (result, updatedId) => {
+    fetchProjects();
+    if (updatedId) {
+      setUpdatedProjectId(updatedId);
+      setTimeout(() => {
+        setUpdatedProjectId(null);
+      }, 3000);
+    }
+  };
 
-  function handleSearch(e) {
+  const handleSearch = (e) => {
     setSearchQuery(e.target.value);
-  }
+  };
 
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = useMemo(() => projects.filter(project => {
     const query = searchQuery.toLowerCase();
     return (
       (project.name && project.name.toLowerCase().includes(query)) ||
@@ -144,30 +178,38 @@ export default function ProjectsPage() {
       (project.real_estate_company.name && project.real_estate_company.name.toLowerCase().includes(query)) ||
       (project.county.name && project.county.name.toLowerCase().includes(query))
     );
-  });
+  }), [projects, searchQuery]);
 
-  const handleMenuClick = (event, project) => {
+  const handleMenuClick = useCallback((event, project) => {
     setAnchorEl(event.currentTarget);
     setSelectedProject(project);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedProject(null);
-  };
+  }, []);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     router.push(`/projects/${selectedProject._id}/edit`);
     handleMenuClose();
-  };
+  }, [selectedProject, handleMenuClose, router]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     console.log('Eliminar proyecto:', selectedProject._id);
     handleMenuClose();
+  }, [selectedProject, handleMenuClose]);
+
+  const handleChangePage = useCallback((event, newPage) => {
+    setPage(newPage);
+  }, []);
+
+  const handlePromptFocus = () => {
+    setPromptFocused(true);
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+  const handlePromptBlur = () => {
+    setPromptFocused(false);
   };
 
   if (loading) {
@@ -188,6 +230,8 @@ export default function ProjectsPage() {
             placeholder="Búsqueda rápida"
             value={searchQuery}
             onChange={handleSearch}
+            onFocus={handlePromptFocus}
+            onBlur={handlePromptBlur}
             sx={{ mb: 2, flex: 1, mr: 2, height: 40 }}
             InputProps={{
               style: { fontSize: '0.875rem', height: '2.5rem' },
@@ -210,7 +254,7 @@ export default function ProjectsPage() {
         )}
         {viewMode === 'grid' ? (
           <Grid container spacing={4}>
-            {filteredProjects.map(project => (
+            {filteredProjects.slice(0, promptFocused ? 9 : filteredProjects.length).map(project => (
               <Grid item key={project._id} xs={12} sm={6} md={4}>
                 <ProjectCard
                   ref={el => projectRefs.current[project._id] = el}
@@ -278,44 +322,6 @@ export default function ProjectsPage() {
                         >
                           <MoreVert />
                         </IconButton>
-                        <Menu
-                          id="long-menu"
-                          anchorEl={anchorEl}
-                          keepMounted
-                          open={Boolean(anchorEl)}
-                          onClose={handleMenuClose}
-                          PaperProps={{
-                            style: {
-                              borderRadius: '8px',
-                              boxShadow: 'none',
-                            },
-                          }}
-                        >
-                          <MenuItem onClick={handleEdit}>
-                            <ListItemIcon>
-                              <EditIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-                              Editar proyecto
-                            </ListItemText>
-                          </MenuItem>
-                          <MenuItem onClick={() => router.push(`/projects/${selectedProject._id}/edit-stock`)}>
-                            <ListItemIcon>
-                              <EditNoteIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-                              Editar stock
-                            </ListItemText>
-                          </MenuItem>
-                          <MenuItem onClick={handleDelete}>
-                            <ListItemIcon>
-                              <DeleteIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-                              Eliminar
-                            </ListItemText>
-                          </MenuItem>
-                        </Menu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -333,6 +339,36 @@ export default function ProjectsPage() {
           </>
         )}
       </Box>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleEdit}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+            Editar proyecto
+          </ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => router.push(`/projects/${selectedProject?._id}/edit-stock`)}>
+          <ListItemIcon>
+            <EditNoteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+            Editar stock
+          </ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleDelete}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+            Eliminar
+          </ListItemText>
+        </MenuItem>
+      </Menu>
       <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <form onSubmit={handleUpdateProject}>
           <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -346,6 +382,8 @@ export default function ProjectsPage() {
               fullWidth
               value={updatePrompt}
               onChange={(e) => setUpdatePrompt(e.target.value)}
+              onFocus={handlePromptFocus}
+              onBlur={handlePromptBlur}
               onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateProject(e); }}
               InputProps={{
                 sx: {
@@ -371,6 +409,9 @@ export default function ProjectsPage() {
           </Box>
         </form>
       </Box>
+      <Box sx={{ position: 'sticky', bottom: '84px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+        <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
+      </Box>
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
@@ -384,3 +425,5 @@ export default function ProjectsPage() {
     </Box>
   );
 }
+
+export default ProjectsPage;

@@ -57,11 +57,11 @@ export default function SignIn() {
           fullWidth
           startIcon={<GoogleIcon />}
           onClick={() => signIn('google', { callbackUrl: `${window.location.origin}/auth/sign-in?error=AuthError` })}
-          sx={{ mb: 2, backgroundColor: '#4285F4', color: '#fff', '&:hover': { backgroundColor: '#357ae8' } }}
+          sx={{ borderRadius:'2rem' ,mb: 2, backgroundColor: '#2B541E', color: '#000', '&:hover': { backgroundColor: '#2B541E' } }}
         >
           Ingresa con Google
         </Button>
-        <Divider sx={{ my: 2 }}>o</Divider>
+        {/* <Divider sx={{ my: 2 }}>o</Divider>
         <TextField
           label="Correo Electrónico"
           variant="outlined"
@@ -100,7 +100,7 @@ export default function SignIn() {
           sx={{ backgroundColor: '#3b5998', color: '#fff', '&:hover': { backgroundColor: '#365492' } }}
         >
           Ingresa con Facebook
-        </Button>
+        </Button> */}
       </Box>
       <Snackbar
         open={openSnackbar}
