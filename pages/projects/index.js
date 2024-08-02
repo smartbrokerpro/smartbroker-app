@@ -369,7 +369,7 @@ const ProjectsPage = () => {
           </ListItemText>
         </MenuItem>
       </Menu>
-      <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+      {/* <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <form onSubmit={handleUpdateProject}>
           <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
             <TextField
@@ -408,8 +408,8 @@ const ProjectsPage = () => {
             </Button>
           </Box>
         </form>
-      </Box>
-      <Box sx={{ position: 'sticky', bottom: '84px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+      </Box> */}
+      <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
       </Box>
       <Snackbar

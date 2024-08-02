@@ -14,19 +14,18 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Avatar,
   Snackbar,
   Alert,
   CircularProgress,
   Pagination,
   Button,
-  Avatar,
   Chip,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText
 } from '@mui/material';
-import PromptInput from '@/components/PromptInput';
 import { TableRows, GridView, MoreVert, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import { useSidebarContext } from '@/context/SidebarContext';
@@ -34,6 +33,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useTheme } from '@mui/material/styles';
 import LottieLoader from '@/components/LottieLoader';
 import ClientCard from '@/components/ClientCard';
+import PromptInput from '@/components/PromptInput';
 import { useSession } from 'next-auth/react';
 
 const fallbackImage = '/images/avatar-fallback.jpg';
@@ -77,7 +77,6 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      console.log('Usuario autenticado, fetching clientes...');
       fetchClients();
     }
   }, [status]);
@@ -89,15 +88,13 @@ export default function ClientsPage() {
   }, [updatedClientId]);
 
   const fetchClients = useCallback(async () => {
-    console.log('Fetching clientes para la organización:', session.user.organization._id);
     setIsRefetching(true);
     const response = await fetch(`/api/clients?organizationId=${session.user.organization._id}`);
     const data = await response.json();
     if (data.success) {
       setClients(data.data);
-      console.log('Clientes fetch exitoso:', data.data);
     } else {
-      console.error('Error fetching clientes:', data);
+      console.error('Error fetching clients:', data);
     }
     setIsRefetching(false);
     setLoading(false);
@@ -144,7 +141,6 @@ export default function ClientsPage() {
           fetchClients();
         }
 
-        // Disparar evento personalizado para actualizar créditos
         const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
         window.dispatchEvent(creditUpdateEvent);
 
@@ -155,6 +151,16 @@ export default function ClientsPage() {
       setNotification({ open: true, message: 'Error en la operación', severity: 'error' });
     }
     setIsSubmitting(false);
+  };
+
+  const handlePromptSuccess = (result, updatedId) => {
+    fetchClients();
+    if (updatedId) {
+      setUpdatedClientId(updatedId);
+      setTimeout(() => {
+        setUpdatedClientId(null);
+      }, 3000);
+    }
   };
 
   const handleSearch = (e) => {
@@ -325,7 +331,7 @@ export default function ClientsPage() {
           </>
         )}
       </Box>
-      <Box sx={{ position: 'sticky', bottom: '84px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+      <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="clients" onSuccess={handlePromptSuccess} />
       </Box>
       <Snackbar

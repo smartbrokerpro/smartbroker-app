@@ -105,7 +105,7 @@ const Chat = () => {
       }
       setAnalysisText(text);
       setShowTypewriter(true);
-      setKey(prevKey => prevKey + 1); // Update key to force re-render Typewriter
+      setKey(prevKey => prevKey + 1);
     }
   }, [response]);
 
