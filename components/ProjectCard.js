@@ -22,7 +22,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { NumberFormatter } from '@/utils/formatNumber';
 
-const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage }, ref) => {
+const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage }, ref) => {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
   const [tooltipText, setTooltipText] = useState('Click para copiar');
@@ -59,7 +59,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
       ref={ref}
       sx={{
         bgcolor: 'background.paper',
-        backgroundColor: updatedProjectId === project?._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+        backgroundColor: updatedProjectIds.includes(project._id) ? 'rgba(0, 255, 0, 0.2)' : 'inherit',
         transition: 'background-color 0.5s ease-in-out',
         mb: 3,
         position: 'relative'
@@ -80,7 +80,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
           label={`${project?.unitsCount || 0} unidades`}
           color="primary"
           variant="contained"
-          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.70rem',    position: 'absolute',bottom: '.5rem',right: 0, background: 'rgba(0, 0, 0, 0.75)', borderRadius: '1rem 0 0 1rem' }}
+          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.70rem',    position: 'absolute',bottom: '.5rem',right: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '1rem 0 0 1rem' }}
         />
         <IconButton
           aria-label="more"

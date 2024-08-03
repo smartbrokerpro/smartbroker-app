@@ -1,99 +1,34 @@
+import mongoose from 'mongoose';
 import Stock from '../models/stockModel';
 
 export function getStockContext() {
+  const stockSchema = Stock.schema;
+  
+  const simplifySchema = (schema) => {
+    return Object.entries(schema.obj).reduce((acc, [key, value]) => {
+      acc[key] = {
+        type: value.type ? value.type.name || value.type.toString() : 'Unknown',
+        ...(value.required && { required: value.required }),
+        ...(value.min !== undefined && { min: value.min }),
+        ...(value.trim && { trim: value.trim })
+      };
+      return acc;
+    }, {});
+  };
+
+  const simplifiedSchema = simplifySchema(stockSchema);
+  const schemaString = JSON.stringify(simplifiedSchema, null, 2);
+
+  console.log('Simplified Stock Schema:', schemaString);
+
   return `
 Dado el siguiente modelo para la colección de stock en MongoDB:
-{
-  "organization_id": {
-    "type": "mongoose.Schema.Types.ObjectId",
-    "required": [true, "El ID de la organización es obligatorio"]
-  },
-  "project_id": {
-    "type": "mongoose.Schema.Types.ObjectId",
-    "required": [true, "El ID del proyecto es obligatorio"]
-  },
-  "apartment": {
-    "type": "String",
-    "required": [true, "El número de apartamento es obligatorio"],
-    "trim": true
-  },
-  "role": {
-    "type": "String",
-    "trim": true
-  },
-  "model": {
-    "type": "String",
-    "trim": true
-  },
-  "typology": {
-    "type": "String",
-    "trim": true
-  },
-  "program": {
-    "type": "String",
-    "trim": true
-  },
-  "orientation": {
-    "type": "String",
-    "trim": true
-  },
-  "interior_surface": {
-    "type": "Number",
-    "min": [0, "La superficie interior no puede ser negativa"]
-  },
-  "terrace_surface": {
-    "type": "Number",
-    "min": [0, "La superficie de la terraza no puede ser negativa"]
-  },
-  "total_surface": {
-    "type": "Number",
-    "min": [0, "La superficie total no puede ser negativa"]
-  },
-  "current_list_price": {
-    "type": "Number",
-    "min": [0, "El precio de lista no puede ser negativo"]
-  },
-  "down_payment_bonus": {
-    "type": "Number",
-    "min": [0, "El bono del pie no puede ser negativo"]
-  },
-  "discount": {
-    "type": "Number",
-    "min": [0, "El descuento no puede ser negativo"]
-  },
-  "rent": {
-    "type": "Number",
-    "min": [0, "El valor de la renta no puede ser negativo"]
-  },
-  "status_id": {
-    "type": "mongoose.Schema.Types.ObjectId"
-  },
-  "county_id": {
-    "type": "mongoose.Schema.Types.ObjectId"
-  },
-  "county_name": {
-    "type": "String",
-    "trim": true
-  },
-  "real_estate_company_name": {
-    "type": "String",
-    "trim": true
-  },
-  "region_name": {
-    "type": "String",
-    "trim": true
-  },
-  "available": {
-    "type": "Number",
-    "min": [0, "La disponibilidad no puede ser negativa"]
-  }
-}
+${schemaString}
 
 Devuelve solo el comando MongoDB en JSON minificado para la operación indicada, incluyendo la acción ("create", "update", "delete", "filter") y "organization_id".
 
 Por favor, devuelve solo el comando MongoDB necesario en formato JSON puro y minificado para la operación solicitada en el siguiente texto. No incluyas ninguna explicación adicional. Asegúrate de incluir la acción a realizar ("create", "update", "delete", "filter") como parte de la respuesta JSON.
 
-Ejemplos de posibles entradas:
 Ejemplos de posibles entradas:
 1. "Crear una nueva unidad de stock con el apartamento '204'."
    Respuesta esperada: {"action": "create", "command": { "apartment": "204", "project_id": "ObjectId", "organization_id": "ObjectId" }}

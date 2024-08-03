@@ -62,7 +62,8 @@ export default function ClientsPage() {
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
-  const [updatedClientId, setUpdatedClientId] = useState(null);
+  const [updatedClientId, setUpdatedClientId] = useState([]);
+  const [updatedClientIds, setUpdatedClientIds] = useState([]);
   const [isRefetching, setIsRefetching] = useState(false);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
@@ -82,10 +83,14 @@ export default function ClientsPage() {
   }, [status]);
 
   useEffect(() => {
-    if (updatedClientId) {
-      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (updatedClientIds.length > 0) {
+      const firstUpdatedId = updatedClientIds[0];
+      const element = clientRefs.current[firstUpdatedId];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
-  }, [updatedClientId]);
+  }, [updatedClientIds]);
 
   const fetchClients = useCallback(async () => {
     setIsRefetching(true);
@@ -153,13 +158,35 @@ export default function ClientsPage() {
     setIsSubmitting(false);
   };
 
-  const handlePromptSuccess = (result, updatedId) => {
-    fetchClients();
-    if (updatedId) {
-      setUpdatedClientId(updatedId);
+  const handlePromptSuccess = (result) => {
+    console.log('Resultado completo de la operación:', result);
+    
+    let updatedIds = [];
+    if (result.data && Array.isArray(result.data.updatedIds)) {
+      updatedIds = result.data.updatedIds;
+    } else if (result.data && result.data._id) {
+      updatedIds = [result.data._id];
+    }
+  
+    console.log(`Número de IDs actualizados: ${updatedIds.length}`);
+    console.log('IDs actualizados:', updatedIds);
+  
+    if (updatedIds.length > 0) {
+      setUpdatedClientIds(updatedIds);
+      fetchClients();
       setTimeout(() => {
-        setUpdatedClientId(null);
+        setUpdatedClientIds([]);
       }, 3000);
+  
+      showNotification(`Operación exitosa: ${updatedIds.length} cliente(s) modificado(s)`, 'success');
+    } else {
+      fetchClients();
+      showNotification('Operación completada, pero no se modificaron clientes', 'info');
+    }
+  
+    if (result.credits) {
+      const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+      window.dispatchEvent(creditUpdateEvent);
     }
   };
 
@@ -249,7 +276,8 @@ export default function ClientsPage() {
                 <ClientCard
                   ref={el => clientRefs.current[client._id] = el}
                   client={client}
-                  updatedClientId={updatedClientId}
+                  updatedClientIds={updatedClientIds}
+                  isUpdated={updatedClientIds.includes(client._id)}
                   fallbackImage={fallbackImage}
                 />
               </Grid>
@@ -277,7 +305,7 @@ export default function ClientsPage() {
                       key={client._id}
                       ref={el => clientRefs.current[client._id] = el}
                       sx={{
-                        backgroundColor: updatedClientId === client._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+                        backgroundColor: updatedClientIds.includes(client._id) ? 'rgba(0, 255, 0, 0.2)' : 'inherit',
                         transition: 'background-color 0.5s ease-in-out'
                       }}
                     >
@@ -332,7 +360,11 @@ export default function ClientsPage() {
         )}
       </Box>
       <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
-        <PromptInput modelName="clients" onSuccess={handlePromptSuccess} />
+        <PromptInput 
+          modelName="clients" 
+          onSuccess={handlePromptSuccess}
+          useExternalNotification={true}
+        />
       </Box>
       <Snackbar
         open={notification.open}

@@ -54,6 +54,7 @@ const ProjectsPage = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [updatedProjectId, setUpdatedProjectId] = useState(null);
+  const [updatedProjectIds, setUpdatedProjectIds] = useState([]);
   const [isRefetching, setIsRefetching] = useState(false);
   const [page, setPage] = useState(1);
   const [promptFocused, setPromptFocused] = useState(false);
@@ -79,10 +80,14 @@ const ProjectsPage = () => {
   }, [projects]);
 
   useEffect(() => {
-    if (updatedProjectId) {
-      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (updatedProjectIds.length > 0) {
+      const firstUpdatedId = updatedProjectIds[0];
+      const element = projectRefs.current[firstUpdatedId];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
-  }, [updatedProjectId]);
+  }, [updatedProjectIds, projects]);
 
   const fetchProjects = useCallback(async () => {
     console.log('Fetching proyectos para la organización:', session.user.organization._id);
@@ -153,13 +158,35 @@ const ProjectsPage = () => {
     setIsSubmitting(false);
   }
   
-  const handlePromptSuccess = (result, updatedId) => {
-    fetchProjects();
-    if (updatedId) {
-      setUpdatedProjectId(updatedId);
+  const handlePromptSuccess = (result) => {
+    console.log('Resultado completo de la operación:', result);
+    
+    let updatedIds = [];
+    if (result.data && Array.isArray(result.data.updatedIds)) {
+      updatedIds = result.data.updatedIds;
+    } else if (result.data && result.data._id) {
+      updatedIds = [result.data._id];
+    }
+  
+    console.log(`Número de IDs actualizados: ${updatedIds.length}`);
+    console.log('IDs actualizados:', updatedIds);
+  
+    if (updatedIds.length > 0) {
+      setUpdatedProjectIds(updatedIds);
+      fetchProjects();
       setTimeout(() => {
-        setUpdatedProjectId(null);
+        setUpdatedProjectIds([]);
       }, 3000);
+  
+      showNotification(`Operación exitosa: ${updatedIds.length} proyecto(s) modificado(s)`, 'success');
+    } else {
+      fetchProjects();
+      showNotification('Operación completada, pero no se modificaron proyectos', 'info');
+    }
+  
+    if (result.credits) {
+      const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+      window.dispatchEvent(creditUpdateEvent);
     }
   };
 
@@ -259,7 +286,7 @@ const ProjectsPage = () => {
                 <ProjectCard
                   ref={el => projectRefs.current[project._id] = el}
                   project={project}
-                  updatedProjectId={updatedProjectId}
+                  updatedProjectIds={updatedProjectIds}
                   fallbackImage={fallbackImage}
                 />
               </Grid>
@@ -287,7 +314,7 @@ const ProjectsPage = () => {
                       key={project._id}
                       ref={el => projectRefs.current[project._id] = el}
                       sx={{
-                        backgroundColor: updatedProjectId === project._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+                        backgroundColor: updatedProjectIds.includes(project._id) ? 'rgba(0, 255, 0, 0.2)' : 'inherit',
                         transition: 'background-color 0.5s ease-in-out'
                       }}
                     >

@@ -10,7 +10,7 @@ const PromptInput = ({ modelName, onSuccess, projectId = null, useExternalNotifi
   const { data: session } = useSession();
   const showNotification = useNotification();
 
-  console.log(projectId);
+  // console.log(projectId);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +37,7 @@ const PromptInput = ({ modelName, onSuccess, projectId = null, useExternalNotifi
         requestBody.projectId = projectId;
       }
 
-      console.log(requestBody);
+      // console.log(requestBody);
 
       const response = await fetch(`/api/gpt/${modelName}`, {
         method: 'POST',

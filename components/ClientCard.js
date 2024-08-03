@@ -25,24 +25,28 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'contacted':
+    case 'contactado':
       return '#6CD63F'; // Verde
-    case 'follow_up':
+    case 'hacer seguimiento':
       return '#FFD700'; // Amarillo
-    case 'not_contacted':
+    case 'no contactado':
       return '#FFA500'; // Naranja
-    case 'unreachable':
+    case 'inubicable':
       return '#DA3739'; // Rojo
     default:
       return '#808080'; // Gris por defecto
   }
 };
 
-const ClientCard = React.forwardRef(({ client, updatedClientId, fallbackImage }, ref) => {
+const ClientCard = React.forwardRef(({ client, updatedClientIds, updatedClientId, fallbackImage }, ref) => {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
   const [tooltipText, setTooltipText] = useState('Copiar');
   const [icon, setIcon] = useState(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
+
+  const isUpdated = Array.isArray(updatedClientIds) 
+    ? updatedClientIds.includes(client._id)
+    : updatedClientId === client._id;
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -75,7 +79,7 @@ const ClientCard = React.forwardRef(({ client, updatedClientId, fallbackImage },
       ref={ref}
       sx={{
         bgcolor: 'background.paper',
-        backgroundColor: updatedClientId === client._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+        backgroundColor: isUpdated ? 'rgba(0, 255, 0, 0.2)' : 'white',
         transition: 'background-color 0.5s ease-in-out',
         mb: 3,
         position: 'relative'

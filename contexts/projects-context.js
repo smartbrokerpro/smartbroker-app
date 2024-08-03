@@ -1,8 +1,25 @@
+import mongoose from 'mongoose';
 import Project from '../models/projectModel';
 
 export function getProjectContext() {
-  const schema = Project.schema.obj;
-  const schemaString = JSON.stringify(schema, null, 2);
+  const projectSchema = Project.schema;
+  
+  const simplifySchema = (schema) => {
+    return Object.entries(schema.obj).reduce((acc, [key, value]) => {
+      acc[key] = {
+        type: value.type ? value.type.name || value.type.toString() : 'Unknown',
+        ...(value.required && { required: value.required }),
+        ...(value.min !== undefined && { min: value.min }),
+        ...(value.trim && { trim: value.trim })
+      };
+      return acc;
+    }, {});
+  };
+
+  const simplifiedSchema = simplifySchema(projectSchema);
+  const schemaString = JSON.stringify(simplifiedSchema, null, 2);
+
+  console.log('Simplified Project Schema:', schemaString);
 
   return `
 Modelo de proyectos en MongoDB:

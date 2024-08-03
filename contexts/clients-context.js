@@ -1,12 +1,29 @@
+import mongoose from 'mongoose';
 import Client from '../models/clientModel';
 
 export function getClientContext() {
-  const schema = Client.schema.obj;
-  const schemaString = JSON.stringify(schema, null, 2);
+  const clientSchema = Client.schema;
+  
+  const simplifySchema = (schema) => {
+    return Object.entries(schema.obj).reduce((acc, [key, value]) => {
+      acc[key] = {
+        type: value.type ? value.type.name || value.type.toString() : 'Unknown',
+        ...(value.required && { required: value.required }),
+        ...(value.min !== undefined && { min: value.min }),
+        ...(value.trim && { trim: value.trim })
+      };
+      return acc;
+    }, {});
+  };
+
+  const simplifiedSchema = simplifySchema(clientSchema);
+  const schemaString = JSON.stringify(simplifiedSchema, null, 2);
+
+  console.log('Simplified Client Schema:', schemaString);
 
   return `
 Dado el siguiente modelo para la colección de clientes en MongoDB:
-${JSON.stringify(Client, null, 2)}
+${schemaString}
 
 Devuelve solo el comando MongoDB en JSON minificado para la operación indicada, incluyendo la acción ("create", "update", "delete", "filter") y "organization_id".
 
@@ -21,5 +38,7 @@ Ejemplos de posibles entradas:
    Respuesta esperada: {"action": "delete", "command": { "rut": "12345678-9", "organization_id": "ObjectId" }}
 4. "Filtrar los clientes que tengan origen 'facebook' y status 'unreachable'."
    Respuesta esperada: {"action": "filter", "command": { "origin": "facebook", "status": "unreachable", "organization_id": "ObjectId" }}
+5. "Cambia todos los clientes con origen facebook a email."
+   Respuesta esperada: {"action": "update", "command": { "q": { "origin": "facebook", "organization_id": "ObjectId" }, "u": { "$set": { "origin": "email" } }, "multi": true }}
    `;
 }
