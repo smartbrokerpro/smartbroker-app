@@ -28,6 +28,7 @@ import { NumberFormatter } from '@/utils/formatNumber';
 import LottieLoader from '@/components/LottieLoader';
 import QuotationDialog from '@/components/QuotationDialog';
 import { useSession } from 'next-auth/react';
+import PromptInput from '@/components/PromptInput'; // Importa el componente PromptInput
 
 export default function StockPage() {
   const router = useRouter();
@@ -37,12 +38,10 @@ export default function StockPage() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [firstLoad, setFirstLoad] = useState(true);
-  const [updatePrompt, setUpdatePrompt] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
-  const [updatedStockId, setUpdatedStockId] = useState(null);
+  const [updatedStockIds, setUpdatedStockIds] = useState([]);
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
   const theme = useTheme();
@@ -54,7 +53,6 @@ export default function StockPage() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      console.log(session.user.organization._id, status)
       if (idProject) {
         fetchProject();
         fetchStock();
@@ -63,13 +61,14 @@ export default function StockPage() {
   }, [idProject, status]);
 
   useEffect(() => {
-    if (updatedStockId) {
-      const element = stockRefs.current[updatedStockId];
+    if (updatedStockIds.length > 0) {
+      const firstUpdatedId = updatedStockIds[0];
+      const element = stockRefs.current[firstUpdatedId];
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [updatedStockId, stock]);
+  }, [updatedStockIds, stock]);
 
   async function fetchProject() {
     try {
@@ -77,7 +76,6 @@ export default function StockPage() {
       const data = await response.json();
       if (data.success) {
         setProject(data.data);
-        console.log(data.data);
       } else {
         console.error('Error fetching project details:', data.error);
       }
@@ -104,65 +102,54 @@ export default function StockPage() {
     setFirstLoad(false);
   }
 
-  async function handleUpdateStock(e) {
-    e.preventDefault();
-    if (!updatePrompt.trim()) {
-      setNotification({ open: true, message: 'El prompt no puede estar vacío', severity: 'error' });
+  function handlePromptSuccess(result, updatedId) {
+    console.log('Resultado completo de la operación:', result);
+    
+    if (result.error) {
+      setNotification({
+        open: true,
+        message: result.error,
+        severity: 'error'
+      });
       return;
     }
   
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`/api/gpt/[model]-gpt-handler`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          prompt: updatePrompt, 
-          project_id: idProject, 
-          organizationId: session.user.organization._id,
-          userId: session.user._id,
-          userEmail: session.user.email 
-        }),
-       });
-  
-      const result = await response.json();
-  
-      if (response.ok) {
-        console.log('Operación exitosa:', result);
-        setNotification({ open: true, message: 'Operación exitosa', severity: 'success' });
-        setUpdatePrompt('');
-  
-        const updatedId = result.data?._id || result.updatedStockId || result.deletedStockId || result.createdStockId;
-        if (updatedId) {
-          console.log(`Updated/Deleted/Created stock ID: ${updatedId}`);
-          setUpdatedStockId(updatedId);
-          fetchStock();
-          setTimeout(() => {
-            console.log(`Removing highlight for stock ID: ${updatedId}`);
-            setUpdatedStockId(null);
-          }, 3000);
-        } else {
-          fetchStock();
-        }
-  
-        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
-        window.dispatchEvent(creditUpdateEvent);
-  
-      } else {
-        console.error('Error en la operación:', result);
-        setNotification({ open: true, message: result.error || 'Error en la operación', severity: 'error' });
-      }
-    } catch (error) {
-      console.error('Error en la operación:', error);
-      setNotification({ open: true, message: 'Error en la operación', severity: 'error' });
+    let updatedIds = [];
+    if (result.data && result.data.updatedIds) {
+      updatedIds = result.data.updatedIds;
+    } else if (updatedId) {
+      updatedIds = [updatedId];
     }
-    setIsSubmitting(false);
+  
+    console.log(`Número de IDs actualizados: ${updatedIds.length}`);
+    console.log('IDs actualizados:', updatedIds);
+  
+    if (updatedIds.length > 0) {
+      setUpdatedStockIds(updatedIds);
+      fetchStock();
+      setTimeout(() => {
+        setUpdatedStockIds([]);
+      }, 3000);
+  
+      setNotification({
+        open: true,
+        message: `Operación exitosa: ${updatedIds.length} elemento(s) modificado(s)`,
+        severity: 'success'
+      });
+    } else {
+      fetchStock();
+      setNotification({
+        open: true,
+        message: 'Operación completada, pero no se modificaron elementos',
+        severity: 'info'
+      });
+    }
+  
+    if (result.credits) {
+      const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
+      window.dispatchEvent(creditUpdateEvent);
+    }
   }
-  
-  
 
   function handleSearch(e) {
     setSearchQuery(e.target.value);
@@ -259,7 +246,7 @@ export default function StockPage() {
                 <TableRow
                   ref={el => stockRefs.current[item._id] = el}
                   sx={{
-                    backgroundColor: updatedStockId === item._id ? 'rgba(0, 255, 0, 0.2)' : 'none',
+                    backgroundColor: updatedStockIds.includes(item._id) ? 'rgba(0, 255, 0, 0.2)' : 'inherit',
                     transition: 'background-color 0.5s ease-in-out'
                   }}
                 >
@@ -356,48 +343,18 @@ export default function StockPage() {
         />
       </Box>
       <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
-        <form onSubmit={handleUpdateStock}>
-          <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <TextField
-              aria-label="Crea, modifica o elimina stock"
-              placeholder="Crea, modifica o elimina stock"
-              multiline
-              minRows={1}
-              maxRows={6}
-              variant="outlined"
-              fullWidth
-              value={updatePrompt}
-              onChange={(e) => setUpdatePrompt(e.target.value)}
-              onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateStock(e); }}
-              InputProps={{
-                sx: {
-                  padding: '8px',
-                  paddingLeft: '1rem',
-                  borderRadius: '1rem',
-                  fontSize: '.9rem',
-                  fontFamily: 'Poppins',
-                  backgroundColor: '#fff',
-                  border: '1px solid #fff',
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              type="submit"
-              disabled={isSubmitting}
-              sx={{ minWidth: 100, ml: '6px', borderRadius: '2rem', pl: 3, pr: 3 }}
-            >
-              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Realizar'}
-            </Button>
-          </Box>
-        </form>
+        <PromptInput 
+          modelName="stock" 
+          onSuccess={handlePromptSuccess} 
+          projectId={idProject}
+          useExternalNotification={true}
+        />
       </Box>
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
         onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
           {notification.message}

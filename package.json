@@ -47,6 +47,7 @@
     "react-intl": "^6.6.8",
     "react-window": "^1.8.10",
     "tiktoken": "^1.0.15",
-    "typewriter-effect": "^2.21.0"
+    "typewriter-effect": "^2.21.0",
+    "xlsx": "^0.18.5"
   }
 }

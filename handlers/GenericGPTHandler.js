@@ -13,6 +13,7 @@ const openai = new OpenAI({
 
 export const handleGPTRequest = async (req, res) => {
   const { prompt, organizationId, userId, userEmail, modelName, projectId } = req.body;
+  console.log('**********data*********', JSON.stringify(req.body));
 
   if (!prompt || !modelName) {
     console.log('No se proporcionó un prompt o un nombre de modelo');
@@ -54,12 +55,18 @@ export const handleGPTRequest = async (req, res) => {
 
     // Asegurarse de que organization_id esté presente en el comando
     if (action === 'update' || action === 'delete') {
-      if (!command.q.organization_id) {
-        command.q.organization_id = organizationId;
+      if (command.q.organization_id === "ObjectId") {
+        command.q.organization_id = new ObjectId(organizationId);
+      }
+      if (modelName.toLowerCase() === 'stock' && command.q.project_id === "ObjectId") {
+        command.q.project_id = new ObjectId(projectId);
       }
     } else if (action === 'create' || action === 'filter') {
-      if (!command.organization_id) {
-        command.organization_id = organizationId;
+      if (command.organization_id === "ObjectId") {
+        command.organization_id = new ObjectId(organizationId);
+      }
+      if (modelName.toLowerCase() === 'stock' && command.project_id === "ObjectId") {
+        command.project_id = new ObjectId(projectId);
       }
     }
 
@@ -103,55 +110,72 @@ export const handleGPTRequest = async (req, res) => {
         result = await collection.insertOne({ ...command, organization_id: new ObjectId(organizationId), updatedAt: new Date() });
         result = { _id: result.insertedId, ...command };
         break;
-          case 'update':
-            const { q, u } = command;
-            
-            // Convertir el string "ObjectId" a un ObjectId real
-            if (q.organization_id === "ObjectId") {
-            q.organization_id = new ObjectId(organizationId);
-            }
+      case 'update':
+        const { q, u, multi } = command;
         
-            const query = { ...q, organization_id: new ObjectId(organizationId) };
-            console.log('Query de búsqueda:', query);
-        
-            // Intenta encontrar el documento
-            let existingDoc = await collection.findOne(query);
-            
-            console.log('Documento existente:', existingDoc);
-            
-            if (!existingDoc) {
-            console.log('Documento no encontrado');
-            
-            // Intentar buscar sin organization_id
-            delete query.organization_id;
-            existingDoc = await collection.findOne(query);
-            
-            if (existingDoc) {
-                console.log('Documento encontrado sin organization_id. Actualizando...');
-                await collection.updateOne(
-                { _id: existingDoc._id },
-                { $set: { organization_id: new ObjectId(organizationId) } }
-                );
-            } else {
-                return res.status(404).json({ error: 'Documento no encontrado', query: q });
+        // Asegurarse de que organization_id sea un ObjectId válido
+        if (!organizationId) {
+            console.error('organization_id es obligatorio');
+            return res.status(400).json({ error: 'organization_id es obligatorio' });
+        }
+        const safeOrganizationId = new ObjectId(organizationId);
+
+        // Crear una copia de la consulta original
+        let query = { ...q };
+
+        // Asegurar que organization_id esté presente y sea ObjectId
+        query.organization_id = safeOrganizationId;
+
+        // Si el modelo es 'stock', asegurar que project_id esté presente y sea ObjectId
+        if (modelName.toLowerCase() === 'stock') {
+            if (!projectId) {
+                console.error('project_id es obligatorio para el modelo stock');
+                return res.status(400).json({ error: 'project_id es obligatorio para el modelo stock' });
             }
-            }
-        
-            // Actualizar el documento
+            const safeProjectId = new ObjectId(projectId);
+            query.project_id = safeProjectId;
+        }
+
+        console.log('Query de búsqueda:', query);
+
+        let updatedIds = [];
+
+        if (multi) {
+            // Actualización masiva
+            console.log('Realizando actualización masiva');
             const updateDoc = { $set: { ...u.$set, updatedAt: new Date() } };
-            console.log('Actualizando documento:', existingDoc._id);
-            result = await collection.findOneAndUpdate(
-            { _id: existingDoc._id },
-            updateDoc,
-            { returnDocument: 'after' }
+            console.log('Documento de actualización:', updateDoc);
+            
+            // Obtener los IDs de los documentos que van a ser actualizados
+            const docsToUpdate = await collection.find(query).toArray();
+            updatedIds = docsToUpdate.map(doc => doc._id.toString());
+            
+            const updateResult = await collection.updateMany(query, updateDoc);
+            console.log('Resultado de actualización masiva:', updateResult);
+        } else {
+            // Actualización individual
+            console.log('Realizando actualización individual');
+            const updateDoc = { $set: { ...u.$set, updatedAt: new Date() } };
+            console.log('Documento de actualización:', updateDoc);
+            const updateResult = await collection.findOneAndUpdate(
+                query,
+                updateDoc,
+                { returnDocument: 'after' }
             );
             
-            if (!result) {
-            console.log('No se pudo actualizar el documento');
-            return res.status(404).json({ error: 'No se pudo actualizar el documento' });
+            if (updateResult) {
+                updatedIds = [updateResult._id.toString()];
+                console.log('Documento actualizado:', updateResult);
+            } else {
+                console.log('No se encontró documento para actualizar');
             }
-            console.log('Documento actualizado:', result);
-            break;
+        }
+
+        console.log(`Número de IDs actualizados: ${updatedIds.length}`);
+        console.log('IDs actualizados:', updatedIds);
+
+        result = { updatedIds, count: updatedIds.length };
+        break;
       case 'delete':
         result = await collection.findOneAndDelete({ ...command, organization_id: new ObjectId(organizationId) });
         if (!result) {

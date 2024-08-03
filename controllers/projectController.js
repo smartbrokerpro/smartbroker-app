@@ -44,7 +44,8 @@ export const getProjects = async (req, res) => {
           },
           min_price: { $min: '$stock_items.current_list_price' },
           max_price: { $max: '$stock_items.current_list_price' },
-          hasStock: { $gt: [{ $size: '$stock_items' }, 0] }
+          hasStock: { $gt: [{ $size: '$stock_items' }, 0] },
+          unitsCount: { $size: '$stock_items' } // Aquí agregamos la cantidad de unidades
         }
       },
       {
@@ -94,13 +95,21 @@ export const getProjects = async (req, res) => {
           min_price: 1,
           max_price: 1,
           updatedAt: 1,
-          hasStock: 1
+          hasStock: 1,
+          unitsCount: 1 // Incluimos el campo unitsCount en el resultado final
         }
       },
       {
         $sort: { updatedAt: -1 }
       }
     ]).toArray();
+
+    // Verifica si unitsCount se agregó correctamente
+    // projects.forEach(project => {
+    //   if (typeof project.unitsCount === 'undefined') {
+    //     project.unitsCount = 0;
+    //   }
+    // });
 
     res.status(200).json({ success: true, data: projects });
   } catch (error) {

@@ -4,58 +4,86 @@ import { Box, TextField, Button, CircularProgress } from '@mui/material';
 import { useSession } from 'next-auth/react';
 import { useNotification } from '@/context/NotificationContext';
 
-const PromptInput = ({ modelName, onSuccess }) => {
+const PromptInput = ({ modelName, onSuccess, projectId = null, useExternalNotification = false }) => {
   const [prompt, setPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: session } = useSession();
   const showNotification = useNotification();
 
+  console.log(projectId);
+
   const handleSubmit = async (e) => {
-    console.log("session.user.organization._id", session.user.organization._id)
     e.preventDefault();
     if (!prompt.trim()) {
-      showNotification('El prompt no puede estar vacío', 'error');
+      if (useExternalNotification) {
+        onSuccess({ error: 'El prompt no puede estar vacío' }, null);
+      } else {
+        showNotification('El prompt no puede estar vacío', 'error');
+      }
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/gpt/${modelName}`, {
+      const requestBody = {
+        prompt,
+        organizationId: session.user.organization._id,
+        userId: session.user.id,
+        userEmail: session.user.email,
+        modelName,
+      };
 
+      if (projectId) {
+        requestBody.projectId = projectId;
+      }
+
+      console.log(requestBody);
+
+      const response = await fetch(`/api/gpt/${modelName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          prompt,
-          organizationId: session.user.organization._id,
-          userId: session.user._id,
-          userEmail: session.user.email,
-          modelName
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        showNotification('Operación exitosa', 'success');
+        if (!useExternalNotification) {
+          showNotification('Operación exitosa', 'success');
+        }
         setPrompt('');
 
-        const updatedId = result.data._id || result.deletedProjectId || result.createdProjectId;
+        const updatedId = result.data?._id || result.deletedProjectId || result.createdProjectId;
         onSuccess(result, updatedId);
 
         // Actualizar créditos
         const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
         window.dispatchEvent(creditUpdateEvent);
-        console.log('credits updated:', result.credits)
       } else {
-        showNotification(result.error || 'Error en la operación', 'error');
+        if (useExternalNotification) {
+          onSuccess({ error: result.error || 'Error en la operación' }, null);
+        } else {
+          showNotification(result.error || 'Error en la operación', 'error');
+        }
       }
     } catch (error) {
-      showNotification('Error en la operación', 'error');
+      if (useExternalNotification) {
+        onSuccess({ error: 'Error en la operación' }, null);
+      } else {
+        showNotification('Error en la operación', 'error');
+      }
     }
     setIsSubmitting(false);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   return (
@@ -71,6 +99,7 @@ const PromptInput = ({ modelName, onSuccess }) => {
           fullWidth
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onKeyPress={handleKeyPress}
           InputProps={{
             sx: {
               padding: '8px',

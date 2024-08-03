@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useSession, signOut } from 'next-auth/react';
 import { Drawer, List, ListItem, ListItemIcon, ListItemText, Tooltip, Divider, Box, Avatar, Badge, Menu, MenuItem, IconButton, Typography, LinearProgress } from '@mui/material';
@@ -130,11 +131,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </ListItem>
           <Divider />
           {menuItems.map((item) => (
-            <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
+          <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
+            <Link href={item.href} passHref>
               <ListItem 
                 button 
-                component="a" 
-                href={item.disabled ? null : item.href}
                 disabled={item.disabled}
                 sx={{
                   borderRadius: '0 2rem 2rem 0',
@@ -151,8 +151,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 {!collapsed && <ListItemText primary={item.text} />}
               </ListItem>
-            </Tooltip>
-          ))}
+            </Link>
+          </Tooltip>
+        ))}
+
         </List>
       </Box>
       

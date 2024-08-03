@@ -11,17 +11,22 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Tooltip
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { NumberFormatter } from '@/utils/formatNumber';
 
 const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage }, ref) => {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [tooltipText, setTooltipText] = useState('Click para copiar');
+  const [icon, setIcon] = useState(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -36,8 +41,17 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
   };
 
   const handleDelete = () => {
-    // Aquí puedes agregar la lógica para eliminar el proyecto
     console.log('Eliminar proyecto:', project?._id);
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setTooltipText('Copiado');
+    setIcon(<CheckCircleIcon sx={{ fontSize: 16, mr: 0.5 }} />);
+    setTimeout(() => {
+      setTooltipText('Click para copiar');
+      setIcon(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
+    }, 2000);
   };
 
   return (
@@ -62,6 +76,12 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
         }}
         title={project?.name}
       >
+        <Chip
+          label={`${project?.unitsCount || 0} unidades`}
+          color="primary"
+          variant="contained"
+          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.70rem',    position: 'absolute',bottom: '.5rem',right: 0, background: 'rgba(0, 0, 0, 0.75)', borderRadius: '1rem 0 0 1rem' }}
+        />
         <IconButton
           aria-label="more"
           aria-controls="long-menu"
@@ -75,7 +95,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
             color:'white',
             '&:hover': {
               color: 'black',
-            bgcolor: 'rgba(255,255,255, 0.6)',
+              bgcolor: 'rgba(255,255,255, 0.6)',
             }
           }}
         >
@@ -112,13 +132,30 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
         </Menu>
       </CardMedia>
       <CardContent>
-        <Typography
-          variant="h6"
-          component="h2"
-          sx={{ pb: 0, mb: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-        >
-          {project?.name}
-        </Typography>
+        {/* Nombre */}
+        <Box sx={{ mb: 1 }}>
+          <Tooltip
+            title={
+              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                {icon}{tooltipText}
+              </Box>
+            }
+            arrow
+            placement="top"
+            classes={{ popper: 'MuiTooltip-copied' }}
+          >
+            <Typography
+              variant="h6"
+              component="h2"
+              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              onClick={() => handleCopy(project?.name)}
+            >
+              {project?.name}
+            </Typography>
+          </Tooltip>
+        </Box>
+
+        {/* Nombre de la Inmobiliaria */}
         <Typography
           variant="h6"
           component="h6"
@@ -126,24 +163,43 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectId, fallbackImage
         >
           {project?.real_estate_company.name}
         </Typography>
-        <Typography
-          variant="body2"
-          sx={{ mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-        >
-          {project?.address}{project?.county.name && `, ${project?.county.name}.`}
-        </Typography>
-        {project?.hasStock &&
-          <Chip
-            label={
-              <>
-                <NumberFormatter value={project?.min_price} decimals={0} /> - <NumberFormatter value={project?.max_price} decimals={0} /> UF
-              </>
+
+        {/* Dirección */}
+        <Box sx={{ mb: 1 }}>
+          <Tooltip
+            title={
+              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                {icon}{tooltipText}
+              </Box>
             }
-            color="primary"
-            variant="outlined"
-            sx={{ textAlign: 'right' }}
-          />
-        }
+            arrow
+            placement="top"
+            classes={{ popper: 'MuiTooltip-copied' }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              onClick={() => handleCopy(project?.address)}
+            >
+              {project?.address}{project?.county.name && `, ${project?.county.name}.`}
+            </Typography>
+          </Tooltip>
+        </Box>
+
+        {project?.hasStock && (
+          <>
+            <Chip
+              label={
+                <>
+                  <NumberFormatter value={project?.min_price} decimals={0} /> - <NumberFormatter value={project?.max_price} decimals={0} /> UF
+                </>
+              }
+              color="primary"
+              variant="outlined"
+              sx={{ textAlign: 'right' }}
+            />
+          </>
+        )}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
           {project?.typologies.map((typology, index) => (

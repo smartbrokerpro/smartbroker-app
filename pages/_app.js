@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import RightSidebar from '@/components/RightSidebar';
 import { NotificationProvider } from '@/context/NotificationContext';
 import '@/styles/globals.css';
-import { lightTheme, darkTheme } from '../utils/theme';
+import { lightTheme } from '../utils/theme';
 import { useRouter } from 'next/router';
 import { SidebarProvider, useSidebarContext } from '@/context/SidebarContext';
 

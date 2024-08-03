@@ -43,8 +43,6 @@ export default function Home() {
           </Paper>
         </Box>
       </Box>
-
-      
     </Container>
   );
 }
@@ -61,7 +59,16 @@ export async function getServerSideProps(context) {
     };
   }
 
+  // Redirección temporal a /projects
   return {
-    props: { session },
+    redirect: {
+      destination: '/projects',
+      permanent: false,
+    },
   };
+
+  // Si decides no redirigir, puedes devolver las props originales:
+  // return {
+  //   props: { session },
+  // };
 }
