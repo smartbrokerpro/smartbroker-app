@@ -515,10 +515,10 @@ export const bulkUploadStock = async (req, res) => {
 
       validRowsCount++;
       
-      if (validRowsCount >= 100) {
-        console.log('Alcanzado el límite de 100 filas válidas, deteniendo el procesamiento.');
-        break;
-      }
+      // if (validRowsCount >= 100) {
+      //   console.log('Alcanzado el límite de 100 filas válidas, deteniendo el procesamiento.');
+      //   break;
+      // }
     }
 
     if (validRowsCount === 0) {
