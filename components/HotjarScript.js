@@ -1,6 +1,10 @@
 import Script from 'next/script'
 
 const HotjarScript = () => {
+  if (process.env.NEXT_PUBLIC_ENABLE_HOTJAR !== 'true') {
+    return null;
+  }
+
   return (
     <Script id="hotjar-script" strategy="afterInteractive">
       {`

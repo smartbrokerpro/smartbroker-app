@@ -24,7 +24,7 @@ function AppContent({ Component, pageProps }) {
      <Head>
         <title>SmartBroker Pro</title>
       </Head>
-      {process.env.NODE_ENV === 'production' && <HotjarScript />}
+      <HotjarScript />
 
     <ThemeProvider theme={mode === 'light' ? lightTheme : darkTheme}>
       <CssBaseline />
