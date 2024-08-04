@@ -13,7 +13,11 @@ const ProjectSchema = new mongoose.Schema(
     },
     min_price: { type: Number },
     max_price: { type: Number },
-    typologies: { type: [String] }
+    typologies: { type: [String] },
+    region_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Region' },
+    gallery: { type: [String] },
+    commercialConditions: { type: String },
+    organization_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' }
   },
   { timestamps: true } // Esta línea añadirá `createdAt` y `updatedAt`
 );

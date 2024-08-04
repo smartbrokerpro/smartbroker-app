@@ -44,6 +44,8 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import { NumberFormatter } from '@/utils/formatNumber';
 import { useSession } from 'next-auth/react';
 import { AddHome as AddHomeIcon, AddHomeWork as AddHomeWorkIcon } from '@mui/icons-material';
+import DomainAddIcon from '@mui/icons-material/DomainAdd';
+
 const fallbackImage = '/images/fallback.jpg';
 
 const ProjectsPage = () => {
@@ -266,8 +268,14 @@ const ProjectsPage = () => {
         />
         <SpeedDialAction
           icon={<AddHomeWorkIcon />}
-          tooltipTitle="Carga masiva"
+          tooltipTitle="Carga masiva de proyectos"
           onClick={() => router.push('/projects/bulk-upload')}
+        />
+        <SpeedDialAction
+          icon={<DomainAddIcon />}
+
+          tooltipTitle="Carga masiva de stock"
+          onClick={() => router.push('/projects/bulk-upload-stock')}
         />
       </SpeedDial>
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>

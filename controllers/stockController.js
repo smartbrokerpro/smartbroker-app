@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { logPrompt } from '@/utils/logPrompt';
+import ExcelJS from 'exceljs';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -363,6 +364,175 @@ export const deleteStock = async (req, res) => {
     }
     res.status(200).json({ success: true, data: deletedStock });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+export const bulkUploadStock = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    console.log('Iniciando carga masiva de stock');
+    const { organizationId } = req.body;
+    const mapping = JSON.parse(req.body.mapping);
+
+    console.log('Mapping recibido:', mapping);
+
+    if (!organizationId) {
+      console.log('Error: organizationId no proporcionado');
+      return res.status(400).json({ success: false, error: 'organizationId is required' });
+    }
+
+    if (!mapping || Object.keys(mapping).length === 0) {
+      console.log('Error: Mapeo inválido o vacío');
+      return res.status(400).json({ success: false, error: 'Invalid or empty mapping' });
+    }
+
+    console.log('Conectando a la base de datos...');
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+
+    console.log('Cargando archivo Excel...');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const worksheet = workbook.getWorksheet(1);
+    console.log(`Número total de filas en el Excel: ${worksheet.rowCount}`);
+    console.log(`Número total de columnas en el Excel: ${worksheet.columnCount}`);
+    
+    const headerRow = worksheet.getRow(1);
+    const headers = headerRow.values.filter(Boolean);
+    console.log('Nombres de las columnas en el Excel:', headers);
+
+    const getCellValue = (row, fieldName) => {
+      const columnName = Object.keys(mapping).find(key => mapping[key] === fieldName);
+      if (!columnName) {
+        console.log(`Campo no mapeado: ${fieldName}`);
+        return null;
+      }
+      const columnIndex = headers.indexOf(columnName);
+      if (columnIndex === -1) {
+        console.log(`Columna no encontrada: ${columnName}`);
+        return null;
+      }
+      const cell = row.getCell(columnIndex + 1);
+      return cell && cell.value !== undefined ? cell.value : null;
+    };
+
+    const stockItems = [];
+    let validRowsCount = 0;
+    let errorCount = 0;
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      if (errorCount > 10) {
+        console.log('Demasiados errores consecutivos, deteniendo el procesamiento.');
+        break;
+      }
+
+      console.log(`Procesando fila ${rowNumber}`);
+      const row = worksheet.getRow(rowNumber);
+      
+      if (!row.hasValues) {
+        console.log(`Fila ${rowNumber} está vacía, saltando...`);
+        errorCount++;
+        continue;
+      }
+
+      const projectName = getCellValue(row, 'project_name');
+      if (!projectName) {
+        console.log(`Fila ${rowNumber}: Nombre del proyecto vacío, saltando...`);
+        errorCount++;
+        continue;
+      }
+
+      errorCount = 0;
+
+      console.log(`Buscando proyecto: ${projectName}`);
+      const project = await db.collection('projects').findOne({ 
+        name: projectName,
+        organization_id: new ObjectId(organizationId)
+      });
+      
+      if (!project) {
+        console.log(`Fila ${rowNumber}: Proyecto no encontrado: ${projectName}, saltando...`);
+        continue;
+      }
+
+      const stockItem = {
+        project_id: project._id,
+        organization_id: new ObjectId(organizationId),
+        apartment: getCellValue(row, 'apartment'),
+        role: getCellValue(row, 'role'),
+        model: getCellValue(row, 'model'),
+        typology: getCellValue(row, 'typology'),
+        program: getCellValue(row, 'program'),
+        orientation: getCellValue(row, 'orientation'),
+        interior_surface: parseFloat(getCellValue(row, 'interior_surface')) || 0,
+        terrace_surface: parseFloat(getCellValue(row, 'terrace_surface')) || 0,
+        total_surface: parseFloat(getCellValue(row, 'total_surface')) || 0,
+        current_list_price: parseInt(getCellValue(row, 'current_list_price')) || 0,
+        down_payment_bonus: parseInt(getCellValue(row, 'down_payment_bonus')) || 0,
+        discount: parseInt(getCellValue(row, 'discount')) || 0,
+        rent: parseInt(getCellValue(row, 'rent')) || 0,
+        available: 1,
+        created_at: new Date(),
+        updatedAt: new Date()
+      };
+
+      const realEstateCompanyName = getCellValue(row, 'real_estate_company');
+      if (realEstateCompanyName) {
+        let realEstateCompany = await db.collection('real_estate_companies').findOne({ name: realEstateCompanyName });
+        if (!realEstateCompany) {
+          const result = await db.collection('real_estate_companies').insertOne({ 
+            name: realEstateCompanyName,
+            organization_id: new ObjectId(organizationId)
+          });
+          realEstateCompany = { _id: result.insertedId, name: realEstateCompanyName };
+        }
+        stockItem.real_estate_company_id = realEstateCompany._id;
+        stockItem.real_estate_company_name = realEstateCompanyName;
+      }
+
+      const countyName = getCellValue(row, 'county');
+      if (countyName) {
+        const county = await db.collection('counties').findOne({ name: countyName });
+        if (county) {
+          stockItem.county_id = county._id;
+          stockItem.county_name = countyName;
+          stockItem.region_name = county.region_name;
+        } else {
+          console.log(`Fila ${rowNumber}: Comuna no encontrada: ${countyName}`);
+        }
+      }
+
+      Object.keys(stockItem).forEach(key => stockItem[key] === null && delete stockItem[key]);
+
+      console.log(`Stock item creado: ${JSON.stringify(stockItem)}`);
+      stockItems.push(stockItem);
+
+      validRowsCount++;
+      
+      if (validRowsCount >= 100) {
+        console.log('Alcanzado el límite de 100 filas válidas, deteniendo el procesamiento.');
+        break;
+      }
+    }
+
+    if (validRowsCount === 0) {
+      console.log('No se encontraron datos válidos para cargar');
+      return res.status(400).json({ success: false, error: 'No se encontraron datos válidos para cargar' });
+    }
+
+    console.log(`Insertando ${validRowsCount} elementos de stock...`);
+    const result = await db.collection('stock').insertMany(stockItems);
+
+    console.log(`Carga masiva completada. Elementos insertados: ${result.insertedCount}`);
+    res.status(200).json({ success: true, insertedCount: result.insertedCount });
+  } catch (error) {
+    console.error('Error en la carga masiva de stock:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

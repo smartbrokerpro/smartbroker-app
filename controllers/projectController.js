@@ -3,6 +3,19 @@
 import Project from '../models/projectModel';
 import { MongoClient, ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb';
+import ExcelJS from 'exceljs';
+import multer from 'multer';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
+});
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export const getProjects = async (req, res) => {
   const { organizationId } = req.query;
@@ -160,10 +173,32 @@ export const createProject = async (req, res) => {
   }
 
   try {
-    const newProject = new Project({ ...req.body, organization_id: new ObjectId(organizationId) });
-    const savedProject = await newProject.save();
-    res.status(201).json({ success: true, data: savedProject });
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+
+    const projectData = {
+      ...req.body,
+      organization_id: new ObjectId(organizationId),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Convertir los IDs a ObjectId
+    if (projectData.region_id) projectData.region_id = new ObjectId(projectData.region_id);
+    if (projectData.county_id) projectData.county_id = new ObjectId(projectData.county_id);
+    if (projectData.real_estate_company_id) projectData.real_estate_company_id = new ObjectId(projectData.real_estate_company_id);
+
+    // Insertar el nuevo proyecto
+    const result = await db.collection('projects').insertOne(projectData);
+
+    if (result.insertedId) {
+      const newProject = await db.collection('projects').findOne({ _id: result.insertedId });
+      res.status(201).json({ success: true, data: newProject });
+    } else {
+      throw new Error('Failed to insert project');
+    }
   } catch (error) {
+    console.error('Error creating project:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -248,7 +283,7 @@ export const updateProject = async (req, res) => {
     );
 
     console.log('Project and related stock units updated successfully');
-    res.status(200).json({ success: true, data: result.value });
+    res.status(200).json({ success: true, data: result });
   } catch (error) {
     console.error('Error updating project and stock:', error);
     res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
@@ -271,5 +306,118 @@ export const deleteProject = async (req, res) => {
     res.status(200).json({ success: true, data: deletedProject });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const bulkUploadProjects = async (req, res) => {
+  try {
+    console.log('Received file:', req.file);
+    console.log('Received body:', req.body);
+
+    if (!req.file) {
+      console.error('No file uploaded');
+      return res.status(400).json({ success: false, error: 'Excel file is required' });
+    }
+
+    const organizationId = req.body.organizationId;
+    const mapping = JSON.parse(req.body.mapping);
+
+    if (!organizationId) {
+      console.error('organizationId not found');
+      return res.status(400).json({ success: false, error: 'organizationId is required' });
+    }
+
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const worksheet = workbook.getWorksheet(1);
+    const rows = worksheet.getSheetValues();
+
+    if (rows.length < 2) {
+      return res.status(400).json({ success: false, error: 'Excel file is empty or has no data rows' });
+    }
+
+    const headers = rows[1];
+    const projects = [];
+
+    for (let i = 2; i < rows.length; i++) {
+      const row = rows[i];
+      const project = {
+        organization_id: new ObjectId(organizationId),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        location: { lat: -33.4489, lng: -70.6693 }, // Santiago de Chile
+        gallery: [],
+        commercialConditions: null,
+        country_id: new ObjectId("666fa92e6f4aed0a83b1399c"), // ID de Chile
+      };
+
+      Object.entries(mapping).forEach(([excelHeader, dbField]) => {
+        const columnIndex = headers.indexOf(excelHeader);
+        if (columnIndex !== -1 && row[columnIndex] !== undefined) {
+          if (dbField === 'delivery_date') {
+            project[dbField] = new Date(row[columnIndex]);
+          } else {
+            project[dbField] = row[columnIndex] || null;
+          }
+        }
+      });
+
+      if (project.county) {
+        const county = await db.collection('counties').findOne({ 
+          name: { $regex: new RegExp(`^${project.county}$`, 'i') } 
+        });
+        if (county) {
+          project.county_id = county._id;
+          project.region_id = county.region_id;
+        }
+        delete project.county;
+      }
+
+      if (project.real_estate_company) {
+        let realEstateCompany = await db.collection('real_estate_companies').findOne({ 
+          name: { $regex: new RegExp(`^${project.real_estate_company}$`, 'i') } 
+        });
+        if (!realEstateCompany) {
+          const newRealEstateCompany = {
+            name: project.real_estate_company,
+            address: null,
+            contact_person: null,
+            created_at: new Date(),
+            description: null,
+            email: null,
+            phone: null,
+            updated_at: new Date(),
+            website: null
+          };
+          const result = await db.collection('real_estate_companies').insertOne(newRealEstateCompany);
+          project.real_estate_company_id = result.insertedId;
+        } else {
+          project.real_estate_company_id = realEstateCompany._id;
+        }
+        delete project.real_estate_company;
+      }
+
+      ['real_estate_company_id', 'county_id', 'region_id'].forEach(field => {
+        if (project[field]) project[field] = new ObjectId(project[field]);
+      });
+
+      projects.push(project);
+    }
+
+    console.log('Projects to insert:', projects);
+
+    if (projects.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid projects to insert' });
+    }
+
+    const result = await db.collection('projects').insertMany(projects);
+    return res.status(201).json({ success: true, insertedCount: result.insertedCount });
+  } catch (error) {
+    console.error('Error during bulk upload:', error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 };

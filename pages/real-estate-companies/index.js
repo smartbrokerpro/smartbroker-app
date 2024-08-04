@@ -17,10 +17,14 @@ import {
 } from '@mui/material';
 
 const truncateString = (str, num) => {
-  if (str.length <= num) {
+  if(str == undefined){
+    return '-';
+  }
+  if (str?.length <= num) {
     return str;
   }
-  return str.slice(0, num) + '...';
+ 
+  return str?.slice(0, num) + '...';
 };
 
 const RealEstateCompaniesPage = () => {

@@ -15,20 +15,23 @@ import {
 import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
 import { ChevronLeft } from '@mui/icons-material';
-import Link from 'next/link';
 import slugify from 'slugify';
-
-
+import Link from 'next/link';
 
 const MemoizedAutocomplete = React.memo(Autocomplete);
 
-const EditProject = () => {
+const CreateProject = () => {
   const router = useRouter();
-  const { idProject } = router.query;
   const { data: session } = useSession();
 
-  // Estados
-  const [project, setProject] = useState(null);
+  const [project, setProject] = useState({
+    name: '',
+    address: '',
+    location: { lat: -33.4489, lng: -70.6693 },
+    gallery: [],
+    commercialConditions: '',
+    baseImagePath: ''
+  });
   const [regions, setRegions] = useState([]);
   const [counties, setCounties] = useState([]);
   const [realEstateCompanies, setRealEstateCompanies] = useState([]);
@@ -38,59 +41,34 @@ const EditProject = () => {
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
-  // Funciones de carga de datos
   const fetchInitialData = useCallback(async () => {
-    if (!idProject || !session?.user?.organization?._id) return;
+    if (!session?.user?.organization?._id) return;
 
     try {
       setLoading(true);
-      const [regionsData, companiesData, projectData] = await Promise.all([
+      const [regionsData, companiesData] = await Promise.all([
         fetch('/api/regions').then(res => res.json()),
         fetch('/api/real_estate_companies').then(res => res.json()),
-        fetch(`/api/projects/${idProject}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-organization-id': session.user.organization._id
-          }
-        }).then(res => res.json())
       ]);
 
-      if (!regionsData.success || !companiesData.success || !projectData.success) {
+      if (!regionsData.success || !companiesData.success) {
         throw new Error('Error fetching data');
       }
 
       setRegions(regionsData.data);
       setRealEstateCompanies(companiesData.data);
-      setProject(projectData.data);
-
-      // Precargar selecciones
-      const region = regionsData.data.find(r => r._id === projectData.data.region_id);
-      setSelectedRegion(region || null);
-      
-      if (region) {
-        const countiesData = await fetch(`/api/counties?region_id=${region._id}`).then(res => res.json());
-        if (countiesData.success) {
-          setCounties(countiesData.data);
-          const county = countiesData.data.find(c => c._id === projectData.data.county_id);
-          setSelectedCounty(county || null);
-        }
-      }
-      
-      const company = companiesData.data.find(c => c._id === projectData.data.real_estate_company_id);
-      setSelectedRealEstateCompany(company || null);
     } catch (error) {
       console.error('Error fetching initial data:', error);
       setNotification({ open: true, message: 'Error cargando datos iniciales', severity: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [idProject, session]);
+  }, [session]);
 
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Manejadores de cambio
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setProject(prev => ({ ...prev, [name]: value }));
@@ -127,17 +105,16 @@ const EditProject = () => {
     setProject(prev => ({ ...prev, real_estate_company_id: value?._id }));
   }, []);
 
-  // Manejo de imágenes
   const onDrop = useCallback(async (acceptedFiles) => {
-    if (!project || !project.name) {
-      setNotification({ open: true, message: 'Error: Nombre del proyecto no disponible', severity: 'error' });
-      return;
-    }
-  
     const projectSlug = slugify(project.name, { lower: true, strict: true });
     const projectFolder = `${projectSlug}_${Math.floor(Date.now() / 1000)}`;
   
     console.log('Frontend - Project Folder:', projectFolder);
+  
+    setProject(prev => ({
+      ...prev,
+      baseImagePath: projectFolder
+    }));
   
     const uploadPromises = acceptedFiles.map(file => {
       return new Promise((resolve, reject) => {
@@ -179,38 +156,52 @@ const EditProject = () => {
       console.error('Frontend - Error in onDrop:', error);
       setNotification({ open: true, message: 'Error al subir imágenes', severity: 'error' });
     }
-  }, [project]);
+  }, [project.name]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
-  // Manejo de envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const projectToUpdate = {
+      const projectToCreate = {
         ...project,
-        location: project.location ? `${project.location.lat}, ${project.location.lng}` : '',
+        location: `${project.location.lat},${project.location.lng}`,
         real_estate_company_name: selectedRealEstateCompany?.name,
         county_name: selectedCounty?.name,
-        region_name: selectedRegion?.region
+        region_name: selectedRegion?.region,
+        organizationId: session.user.organization._id,
       };
-      const response = await fetch(`/api/projects/${idProject}`, {
-        method: 'PUT',
+
+      const response = await fetch('/api/projects', {
+        method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'x-organization-id': session.user.organization._id
         },
-        body: JSON.stringify(projectToUpdate),
+        body: JSON.stringify(projectToCreate),
       });
+
       const data = await response.json();
+
       if (response.ok && data.success) {
-        setNotification({ open: true, message: 'Proyecto actualizado con éxito', severity: 'success' });
+        setNotification({ 
+          open: true, 
+          message: 'Proyecto creado con éxito', 
+          severity: 'success' 
+        });
+        setTimeout(() => {
+          router.push('/projects');
+        }, 2000);
       } else {
-        throw new Error(data.error || 'Error al actualizar el proyecto');
+        throw new Error(data.error || 'Error al crear el proyecto');
       }
     } catch (error) {
-      console.error('Error updating project:', error);
-      setNotification({ open: true, message: error.message, severity: 'error' });
+      console.error('Error creating project:', error);
+      setNotification({ 
+        open: true, 
+        message: `Error al crear el proyecto: ${error.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -236,7 +227,7 @@ const EditProject = () => {
         </Button>
       </Link>
       <Typography variant="h4" gutterBottom>
-        Editando proyecto: {project?.name}
+        Crear nuevo proyecto
       </Typography>
       <form onSubmit={handleSubmit}>
         <TextField
@@ -244,28 +235,31 @@ const EditProject = () => {
           margin="normal"
           label="Nombre del proyecto"
           name="name"
-          value={project?.name || ''}
+          value={project.name}
           onChange={handleInputChange}
+          required
         />
         <TextField
           fullWidth
           margin="normal"
           label="Dirección"
           name="address"
-          value={project?.address || ''}
+          value={project.address}
           onChange={handleInputChange}
+          required
         />
         <TextField
           fullWidth
           margin="normal"
           label="Ubicación (lat, lng)"
           name="location"
-          value={project?.location ? `${project.location.lat}, ${project.location.lng}` : ''}
+          value={`${project.location.lat}, ${project.location.lng}`}
           onChange={(e) => {
             const [lat, lng] = e.target.value.split(',').map(coord => parseFloat(coord.trim()));
-            setProject(prev => ({ ...prev, location: { lat, lng } }));
+            setProject(prev => ({ ...prev, location: { lat: lat || -33.4489, lng: lng || -70.6693 } }));
           }}
-          helperText="Ingrese la latitud y longitud separadas por coma"
+          helperText="Coordenadas precargadas de Santiago de Chile. Modifique si es necesario."
+          required
         />
         <MemoizedAutocomplete
           options={regions}
@@ -273,21 +267,21 @@ const EditProject = () => {
           value={selectedRegion}
           onChange={handleRegionChange}
           isOptionEqualToValue={(option, value) => option?._id === value?._id}
-          renderInput={(params) => <TextField {...params} label="Región" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Región" margin="normal" required />}
         />
         <MemoizedAutocomplete
           options={counties}
           getOptionLabel={(option) => option.name}
           value={selectedCounty}
           onChange={handleCountyChange}
-          renderInput={(params) => <TextField {...params} label="Comuna" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Comuna" margin="normal" required />}
         />
         <MemoizedAutocomplete
           options={realEstateCompanies}
           getOptionLabel={(option) => option.name}
           value={selectedRealEstateCompany}
           onChange={handleRealEstateCompanyChange}
-          renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" required />}
         />
         <TextField
           fullWidth
@@ -296,11 +290,10 @@ const EditProject = () => {
           margin="normal"
           label="Condiciones Comerciales"
           name="commercialConditions"
-          value={project?.commercialConditions || ''}
+          value={project.commercialConditions}
           onChange={handleInputChange}
         />
         
-        {/* Zona de carga de imágenes */}
         <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
           <input {...getInputProps()} />
           {isDragActive ? (
@@ -310,8 +303,7 @@ const EditProject = () => {
           )}
         </Box>
 
-        {/* Visualización de imágenes */}
-        {project?.gallery && project.gallery.length > 0 && (
+        {project.gallery && project.gallery.length > 0 && (
           <ImageList sx={{ width: '100%', height: 450 }} cols={3} rowHeight={164}>
             {project.gallery.map((item, index) => (
               <ImageListItem key={index}>
@@ -327,7 +319,7 @@ const EditProject = () => {
         )}
 
         <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
-          Guardar cambios
+          Crear Proyecto
         </Button>
       </form>
       <Snackbar
@@ -343,4 +335,4 @@ const EditProject = () => {
   );
 };
 
-export default EditProject;
+export default CreateProject;
