@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -8,141 +6,200 @@ import {
   CircularProgress,
   TextField,
   Typography,
+  Autocomplete,
   Snackbar,
   Alert,
-  Autocomplete
+  ImageList,
+  ImageListItem,
 } from '@mui/material';
+import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
+import { ChevronLeft } from '@mui/icons-material';
+import Link from 'next/link';
+
+const MemoizedAutocomplete = React.memo(Autocomplete);
 
 const EditProject = () => {
   const router = useRouter();
   const { idProject } = router.query;
+  const { data: session } = useSession();
+
+  // Estados
   const [project, setProject] = useState(null);
   const [regions, setRegions] = useState([]);
   const [counties, setCounties] = useState([]);
   const [realEstateCompanies, setRealEstateCompanies] = useState([]);
-  const [filteredCounties, setFilteredCounties] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [selectedCounty, setSelectedCounty] = useState(null);
   const [selectedRealEstateCompany, setSelectedRealEstateCompany] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
-  useEffect(() => {
-    if (idProject) {
-      fetchProject();
-    }
-  }, [idProject]);
+  // Funciones de carga de datos
+  const fetchInitialData = useCallback(async () => {
+    if (!idProject || !session?.user?.organization?._id) return;
 
-  const fetchProject = async () => {
     try {
-      const response = await fetch(`/api/projects/${idProject}`);
-      const data = await response.json();
-      if (data.success) {
-        setProject(data.data.project);
-        setRegions(data.data.regions);
-        setCounties(data.data.counties);
-        setRealEstateCompanies(data.data.realEstateCompanies);
-        setSelectedRegion(data.data.regions.find(region => region._id === data.data.project.region_id));
-        setSelectedCounty(data.data.counties.find(county => county._id === data.data.project.county_id));
-        setSelectedRealEstateCompany(data.data.realEstateCompanies.find(company => company._id === data.data.project.real_estate_company_id));
-      } else {
-        setNotification({ open: true, message: data.error, severity: 'error' });
+      setLoading(true);
+      const [regionsData, companiesData, projectData] = await Promise.all([
+        fetch('/api/regions').then(res => res.json()),
+        fetch('/api/real_estate_companies').then(res => res.json()),
+        fetch(`/api/projects/${idProject}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-organization-id': session.user.organization._id
+          }
+        }).then(res => res.json())
+      ]);
+
+      if (!regionsData.success || !companiesData.success || !projectData.success) {
+        throw new Error('Error fetching data');
       }
-      setLoading(false);
+
+      setRegions(regionsData.data);
+      setRealEstateCompanies(companiesData.data);
+      setProject(projectData.data);
+
+      // Precargar selecciones
+      const region = regionsData.data.find(r => r._id === projectData.data.region_id);
+      setSelectedRegion(region || null);
+      
+      if (region) {
+        const countiesData = await fetch(`/api/counties?region_id=${region._id}`).then(res => res.json());
+        if (countiesData.success) {
+          setCounties(countiesData.data);
+          const county = countiesData.data.find(c => c._id === projectData.data.county_id);
+          setSelectedCounty(county || null);
+        }
+      }
+      
+      const company = companiesData.data.find(c => c._id === projectData.data.real_estate_company_id);
+      setSelectedRealEstateCompany(company || null);
     } catch (error) {
-      console.error('Error fetching project:', error);
-      setNotification({ open: true, message: 'Error fetching project data', severity: 'error' });
+      console.error('Error fetching initial data:', error);
+      setNotification({ open: true, message: 'Error cargando datos iniciales', severity: 'error' });
+    } finally {
       setLoading(false);
     }
-  };
+  }, [idProject, session]);
 
   useEffect(() => {
-    if (selectedRegion) {
-      const countiesForRegion = counties.filter(county => county.region_id === selectedRegion._id);
-      setFilteredCounties(countiesForRegion);
-    } else {
-      setFilteredCounties([]);
-    }
-  }, [selectedRegion]);
+    fetchInitialData();
+  }, [fetchInitialData]);
 
-  const handleInputChange = (e) => {
+  // Manejadores de cambio
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setProject((prev) => ({ ...prev, [name]: value }));
-  };
+    setProject(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleRegionChange = (event, value) => {
+  const handleRegionChange = useCallback(async (event, value) => {
     setSelectedRegion(value);
-    setProject((prev) => ({ ...prev, region_id: value?._id }));
-  };
+    setSelectedCounty(null);
+    if (value) {
+      try {
+        const countiesData = await fetch(`/api/counties?region_id=${value._id}`).then(res => res.json());
+        if (countiesData.success) {
+          setCounties(countiesData.data);
+        } else {
+          throw new Error('Error fetching counties');
+        }
+      } catch (error) {
+        console.error('Error fetching counties:', error);
+        setNotification({ open: true, message: 'Error cargando comunas', severity: 'error' });
+      }
+    } else {
+      setCounties([]);
+    }
+    setProject(prev => ({ ...prev, region_id: value?._id, county_id: null }));
+  }, []);
 
-  const handleCountyChange = (event, value) => {
+  const handleCountyChange = useCallback((event, value) => {
     setSelectedCounty(value);
-    setProject((prev) => ({ ...prev, county_id: value?._id }));
-  };
+    setProject(prev => ({ ...prev, county_id: value?._id }));
+  }, []);
 
-  const handleRealEstateCompanyChange = (event, value) => {
+  const handleRealEstateCompanyChange = useCallback((event, value) => {
     setSelectedRealEstateCompany(value);
-    setProject((prev) => ({ ...prev, real_estate_company_id: value?._id }));
-  };
+    setProject(prev => ({ ...prev, real_estate_company_id: value?._id }));
+  }, []);
 
+  // Manejo de imágenes
   const onDrop = useCallback(async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    const formData = new FormData();
-    formData.append('file', file);
+    const uploadPromises = acceptedFiles.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onabort = () => reject('File reading was aborted');
+        reader.onerror = () => reject('File reading has failed');
+        reader.onload = async () => {
+          try {
+            const binaryStr = reader.result;
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/uploadS3', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error('Upload failed');
+            }
+
+            const data = await response.json();
+            resolve(data.url);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    });
 
     try {
-      const response = await fetch('/api/uploadS3', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setProject((prev) => ({
-          ...prev,
-          gallery: [...(prev.gallery || []), data.url],
-        }));
-        setNotification({ open: true, message: 'Image uploaded successfully', severity: 'success' });
-      } else {
-        setNotification({ open: true, message: 'Error uploading image', severity: 'error' });
-      }
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setProject(prev => ({
+        ...prev,
+        gallery: [...(prev.gallery || []), ...uploadedUrls],
+      }));
+      setNotification({ open: true, message: 'Imágenes subidas con éxito', severity: 'success' });
     } catch (error) {
-      console.error('Error uploading image:', error);
-      setNotification({ open: true, message: 'Error uploading image', severity: 'error' });
+      console.error('Error uploading images:', error);
+      setNotification({ open: true, message: 'Error al subir imágenes', severity: 'error' });
     }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
+  // Manejo de envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
     try {
+      const projectToUpdate = {
+        ...project,
+        location: project.location ? `${project.location.lat}, ${project.location.lng}` : '',
+        real_estate_company_name: selectedRealEstateCompany?.name,
+        county_name: selectedCounty?.name,
+        region_name: selectedRegion?.region
+      };
       const response = await fetch(`/api/projects/${idProject}`, {
         method: 'PUT',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
+          'x-organization-id': session.user.organization._id
         },
-        body: JSON.stringify(project),
+        body: JSON.stringify(projectToUpdate),
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setNotification({ open: true, message: 'Project updated successfully', severity: 'success' });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNotification({ open: true, message: 'Proyecto actualizado con éxito', severity: 'success' });
       } else {
-        setNotification({ open: true, message: result.error || 'Error updating project', severity: 'error' });
+        throw new Error(data.error || 'Error al actualizar el proyecto');
       }
     } catch (error) {
       console.error('Error updating project:', error);
-      setNotification({ open: true, message: 'Error updating project', severity: 'error' });
+      setNotification({ open: true, message: error.message, severity: 'error' });
     }
-
-    setIsSubmitting(false);
   };
 
   if (loading) {
@@ -154,101 +211,119 @@ const EditProject = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', my: 4 }}>
+      <Link href="/projects" passHref>
+        <Button 
+          startIcon={<ChevronLeft />} 
+          variant="outlined" 
+          color="primary"
+          sx={{ mb: 3 }}
+          component="a"
+        >
+          Volver a Proyectos
+        </Button>
+      </Link>
       <Typography variant="h4" gutterBottom>
-        Estás editando el proyecto <b>{project?.name}</b>
+        Editando proyecto: {project?.name}
       </Typography>
-      {project && (
-        <form onSubmit={handleSubmit}>
-          <TextField
-            label="Nombre del proyecto"
-            name="name"
-            value={project.name || ''}
-            onChange={handleInputChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Dirección"
-            name="address"
-            value={project.address || ''}
-            onChange={handleInputChange}
-            fullWidth
-            margin="normal"
-          />
-          <Autocomplete
-            options={regions}
-            getOptionLabel={(option) => option.region}
-            value={selectedRegion}
-            onChange={handleRegionChange}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Región"
-                margin="normal"
-                fullWidth
-              />
-            )}
-          />
-          <Autocomplete
-            options={filteredCounties}
-            getOptionLabel={(option) => option.name}
-            value={selectedCounty}
-            onChange={handleCountyChange}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Comuna"
-                margin="normal"
-                fullWidth
-              />
-            )}
-          />
-          <Autocomplete
-            options={realEstateCompanies}
-            getOptionLabel={(option) => option.name}
-            value={selectedRealEstateCompany}
-            onChange={handleRealEstateCompanyChange}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Inmobiliaria"
-                margin="normal"
-                fullWidth
-              />
-            )}
-          />
-          
-          <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, textAlign: 'center', mt: 2 }}>
-            <input {...getInputProps()} />
-            {isDragActive ? (
-              <p>Suelta los archivos aquí ...</p>
-            ) : (
-              <p>Arrastra y suelta los archivos aquí, o haz click para seleccionar los archivos</p>
-            )}
-          </Box>
-          {project.gallery && project.gallery.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6">Imágenes</Typography>
-              {project.gallery.map((url, index) => (
-                <img key={index} src={url} alt={`Gallery Image ${index}`} style={{ width: '20%', marginTop: 10, marginRight:4 }} />
-              ))}
-            </Box>
+      <form onSubmit={handleSubmit}>
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Nombre del proyecto"
+          name="name"
+          value={project?.name || ''}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Dirección"
+          name="address"
+          value={project?.address || ''}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Ubicación (lat, lng)"
+          name="location"
+          value={project?.location ? `${project.location.lat}, ${project.location.lng}` : ''}
+          onChange={(e) => {
+            const [lat, lng] = e.target.value.split(',').map(coord => parseFloat(coord.trim()));
+            setProject(prev => ({ ...prev, location: { lat, lng } }));
+          }}
+          helperText="Ingrese la latitud y longitud separadas por coma"
+        />
+        <MemoizedAutocomplete
+          options={regions}
+          getOptionLabel={(option) => option?.region || ''}
+          value={selectedRegion}
+          onChange={handleRegionChange}
+          isOptionEqualToValue={(option, value) => option?._id === value?._id}
+          renderInput={(params) => <TextField {...params} label="Región" margin="normal" />}
+        />
+        <MemoizedAutocomplete
+          options={counties}
+          getOptionLabel={(option) => option.name}
+          value={selectedCounty}
+          onChange={handleCountyChange}
+          renderInput={(params) => <TextField {...params} label="Comuna" margin="normal" />}
+        />
+        <MemoizedAutocomplete
+          options={realEstateCompanies}
+          getOptionLabel={(option) => option.name}
+          value={selectedRealEstateCompany}
+          onChange={handleRealEstateCompanyChange}
+          renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" />}
+        />
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          margin="normal"
+          label="Condiciones Comerciales"
+          name="commercialConditions"
+          value={project?.commercialConditions || ''}
+          onChange={handleInputChange}
+        />
+        
+        {/* Zona de carga de imágenes */}
+        <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
+          <input {...getInputProps()} />
+          {isDragActive ? (
+            <p>Suelta las imágenes aquí...</p>
+          ) : (
+            <p>Arrastra y suelta imágenes aquí, o haz clic para seleccionar archivos</p>
           )}
-          <Box sx={{ mt: 2, display:'flex', justifyContent:'center' }}>
-            <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
-              {isSubmitting ? <CircularProgress size={24} /> : 'Guardar cambios'}
-            </Button>
-          </Box>
-        </form>
-      )}
+        </Box>
+
+        {/* Visualización de imágenes */}
+        {project?.gallery && project.gallery.length > 0 && (
+          <ImageList sx={{ width: '100%', height: 450 }} cols={3} rowHeight={164}>
+            {project.gallery.map((item, index) => (
+              <ImageListItem key={index}>
+                <img
+                  src={`${item}?w=164&h=164&fit=crop&auto=format`}
+                  srcSet={`${item}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
+                  alt={`Gallery image ${index + 1}`}
+                  loading="lazy"
+                />
+              </ImageListItem>
+            ))}
+          </ImageList>
+        )}
+
+        <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+          Guardar cambios
+        </Button>
+      </form>
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
       >
-        <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
+        <Alert onClose={() => setNotification(prev => ({ ...prev, open: false }))} severity={notification.severity}>
           {notification.message}
         </Alert>
       </Snackbar>

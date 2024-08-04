@@ -21,6 +21,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { NumberFormatter } from '@/utils/formatNumber';
+import HolidayVillageOutlinedIcon from '@mui/icons-material/HolidayVillageOutlined';
 
 const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage }, ref) => {
   const router = useRouter();
@@ -77,10 +78,13 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
         title={project?.name}
       >
         <Chip
-          label={`${project?.unitsCount || 0} unidades`}
+          label={<Box display="flex" alignItems="center">
+            {project?.unitsCount || 0}
+            <HolidayVillageOutlinedIcon sx={{ml:'.2rem', fontSize:'1.2rem'}} />
+          </Box>}
           color="primary"
           variant="contained"
-          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.70rem',    position: 'absolute',bottom: '.5rem',right: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '1rem 0 0 1rem' }}
+          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem',right: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '1rem 0 0 1rem' }}
         />
         <IconButton
           aria-label="more"

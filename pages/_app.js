@@ -9,6 +9,8 @@ import '@/styles/globals.css';
 import { lightTheme } from '../utils/theme';
 import { useRouter } from 'next/router';
 import { SidebarProvider, useSidebarContext } from '@/context/SidebarContext';
+import HotjarScript from '../components/HotjarScript'
+import Head from 'next/head'
 
 function AppContent({ Component, pageProps }) {
   const { mode } = useColorMode();
@@ -18,6 +20,12 @@ function AppContent({ Component, pageProps }) {
   const isLoginPage = router.pathname === '/auth/sign-in';
 
   return (
+    <>
+     <Head>
+        <title>SmartBroker Pro</title>
+      </Head>
+      {process.env.NODE_ENV === 'production' && <HotjarScript />}
+
     <ThemeProvider theme={mode === 'light' ? lightTheme : darkTheme}>
       <CssBaseline />
       <NotificationProvider>
@@ -32,6 +40,7 @@ function AppContent({ Component, pageProps }) {
         </Box>
       </NotificationProvider>
     </ThemeProvider>
+    </>
   );
 }
 

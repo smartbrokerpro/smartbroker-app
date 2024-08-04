@@ -25,7 +25,11 @@ import {
   Chip,
   Menu,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Fab,
+  SpeedDial,
+  SpeedDialIcon,
+  SpeedDialAction,
 } from '@mui/material';
 import PromptInput from '@/components/PromptInput';
 import { TableRows, GridView, MoreVert } from '@mui/icons-material';
@@ -39,7 +43,7 @@ import { Edit as EditIcon, Delete as DeleteIcon, AddBox as EditStockIcon } from 
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import { NumberFormatter } from '@/utils/formatNumber';
 import { useSession } from 'next-auth/react';
-
+import { AddHome as AddHomeIcon, AddHomeWork as AddHomeWorkIcon } from '@mui/icons-material';
 const fallbackImage = '/images/fallback.jpg';
 
 const ProjectsPage = () => {
@@ -249,6 +253,23 @@ const ProjectsPage = () => {
 
   return (
     <Box ref={containerRef} sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', position: 'relative' }}>
+      <SpeedDial
+        ariaLabel="Opciones de proyecto"
+        sx={{ position: 'fixed', top: '3vh', right: '3vw' }}
+        icon={<SpeedDialIcon />}
+        direction="down"
+      >
+        <SpeedDialAction
+          icon={<AddHomeIcon />}
+          tooltipTitle="Crear proyecto"
+          onClick={() => router.push('/projects/create')}
+        />
+        <SpeedDialAction
+          icon={<AddHomeWorkIcon />}
+          tooltipTitle="Carga masiva"
+          onClick={() => router.push('/projects/bulk-upload')}
+        />
+      </SpeedDial>
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
         <Typography variant="h4" component="h1" gutterBottom color="primary">Proyectos</Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -396,46 +417,6 @@ const ProjectsPage = () => {
           </ListItemText>
         </MenuItem>
       </Menu>
-      {/* <Box sx={{ position: 'sticky', bottom: '4px', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
-        <form onSubmit={handleUpdateProject}>
-          <Box style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <TextField
-              aria-label="Crea, modifica o elimina proyectos"
-              placeholder="Crea, modifica o elimina proyectos"
-              multiline
-              minRows={1}
-              maxRows={6}
-              variant="outlined"
-              fullWidth
-              value={updatePrompt}
-              onChange={(e) => setUpdatePrompt(e.target.value)}
-              onFocus={handlePromptFocus}
-              onBlur={handlePromptBlur}
-              onKeyPress={(e) => { if (e.key === 'Enter') handleUpdateProject(e); }}
-              InputProps={{
-                sx: {
-                  padding: '8px',
-                  paddingLeft: '1rem',
-                  borderRadius: '1rem',
-                  fontSize: '.9rem',
-                  fontFamily: 'Poppins',
-                  backgroundColor: '#fff',
-                  border: '1px solid #fff',
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="primary"
-              type="submit"
-              disabled={isSubmitting}
-              sx={{ minWidth: 100, ml: '6px', borderRadius: '2rem', pl: 3, pr: 3 }}
-            >
-              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Realizar'}
-            </Button>
-          </Box>
-        </form>
-      </Box> */}
       <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
       </Box>

@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    return getProjectDetails(req, res);
+    return getProjectDetails(req, res, organizationId);
   } else if (req.method === 'PUT') {
     return updateProject(req, res);
   } else {

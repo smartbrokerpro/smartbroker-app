@@ -1,8 +1,8 @@
 // controllers/projectController.js
 
 import Project from '../models/projectModel';
+import { MongoClient, ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
 
 export const getProjects = async (req, res) => {
   const { organizationId } = req.query;
@@ -129,7 +129,10 @@ export const getProjectDetails = async (req, res, organizationId) => {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
 
-    const project = await db.collection('projects').findOne({ _id: new ObjectId(idProject), organization_id: new ObjectId(organizationId) });
+    const project = await db.collection('projects').findOne({
+      _id: new ObjectId(idProject),
+      organization_id: new ObjectId(organizationId)
+    });
 
     if (!project) {
       return res.status(404).json({ success: false, error: 'Project not found' });
@@ -166,25 +169,89 @@ export const createProject = async (req, res) => {
 };
 
 export const updateProject = async (req, res) => {
-  const { id } = req.params;
-  const { organizationId } = req.body;
+  const { idProject } = req.query;
+  const organizationId = req.headers['x-organization-id'];
+
+  console.log('Updating project:', idProject);
+  console.log('Organization ID:', organizationId);
 
   if (!organizationId) {
-    return res.status(400).json({ error: 'organizationId is required' });
+    return res.status(400).json({ success: false, error: 'organizationId is required' });
   }
 
-  try {
-    const updatedProject = await Project.findOneAndUpdate(
-      { _id: id, organization_id: new ObjectId(organizationId) },
-      req.body,
-      { new: true }
-    );
-    if (!updatedProject) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
+  if (!ObjectId.isValid(idProject)) {
+    return res.status(400).json({ success: false, error: 'Invalid project ID' });
+  }
+
+  // Crear un objeto de actualización basado en los campos permitidos
+  const updateData = {};
+  const allowedFields = ['name', 'address', 'county_id', 'country_id', 'real_estate_company_id', 'location', 'region_id', 'gallery', 'commercialConditions'];
+
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      if (['county_id', 'country_id', 'real_estate_company_id', 'region_id'].includes(field)) {
+        updateData[field] = new ObjectId(req.body[field]);
+      } else if (field === 'location') {
+        // Verificar si location es una cadena o un objeto
+        if (typeof req.body[field] === 'string') {
+          const [lat, lng] = req.body[field].split(',').map(Number);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            updateData[field] = { lat, lng };
+          }
+        } else if (typeof req.body[field] === 'object') {
+          updateData[field] = req.body[field];
+        }
+      } else {
+        updateData[field] = req.body[field];
+      }
     }
-    res.status(200).json({ success: true, data: updatedProject });
+  });
+
+  // Siempre actualizar el campo updatedAt
+  updateData.updatedAt = new Date();
+
+  let client;
+  try {
+    client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+    const projectsCollection = db.collection('projects');
+    const stockCollection = db.collection('stock');
+
+    console.log('Attempting to update project with data:', updateData);
+
+    const result = await projectsCollection.findOneAndUpdate(
+      { 
+        _id: new ObjectId(idProject), 
+        organization_id: new ObjectId(organizationId) 
+      },
+      { $set: updateData },
+      { 
+        returnDocument: 'after'
+      }
+    );
+
+    if (!result) {
+      console.log('Project not found or not updated');
+      return res.status(404).json({ success: false, message: 'Project not found or not updated' });
+    }
+
+    // Actualizar las unidades de stock relacionadas
+    const stockUpdateData = {
+      real_estate_company_name: req.body.real_estate_company_name,
+      county_name: req.body.county_name,
+      region_name: req.body.region_name
+    };
+
+    await stockCollection.updateMany(
+      { project_id: new ObjectId(idProject) },
+      { $set: stockUpdateData }
+    );
+
+    console.log('Project and related stock units updated successfully');
+    res.status(200).json({ success: true, data: result.value });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error updating project and stock:', error);
+    res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
   }
 };
 
