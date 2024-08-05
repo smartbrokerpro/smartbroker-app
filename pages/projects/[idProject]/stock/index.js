@@ -158,9 +158,9 @@ export default function StockPage() {
   function filterStock(item) {
     const lowercasedQuery = searchQuery.toLowerCase();
     return (
-      item.apartment.toLowerCase().includes(lowercasedQuery) ||
-      item.typology.toLowerCase().includes(lowercasedQuery) ||
-      item.orientation.toLowerCase().includes(lowercasedQuery) ||
+      item.apartment.toString().toLowerCase().includes(lowercasedQuery) ||
+      item.typology.toString().toLowerCase().includes(lowercasedQuery) ||
+      item.orientation.toString().toLowerCase().includes(lowercasedQuery) ||
       item.current_list_price.toString().toLowerCase().includes(lowercasedQuery) ||
       item.down_payment_bonus.toString().toLowerCase().includes(lowercasedQuery) ||
       item.discount.toString().toLowerCase().includes(lowercasedQuery)
