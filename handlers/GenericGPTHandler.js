@@ -111,36 +111,46 @@ export const handleGPTRequest = async (req, res) => {
         result = { _id: result.insertedId, ...command };
         break;
       case 'update':
-        const { q, u, multi } = command;
-        
-        // Asegurarse de que organization_id sea un ObjectId válido
-        if (!organizationId) {
+          const { q, u, multi } = command;
+          
+          // Asegurarse de que organization_id sea un ObjectId válido
+          if (!organizationId) {
             console.error('organization_id es obligatorio');
             return res.status(400).json({ error: 'organization_id es obligatorio' });
-        }
-        const safeOrganizationId = new ObjectId(organizationId);
-
-        // Crear una copia de la consulta original
-        let query = { ...q };
-
-        // Asegurar que organization_id esté presente y sea ObjectId
-        query.organization_id = safeOrganizationId;
-
-        // Si el modelo es 'stock', asegurar que project_id esté presente y sea ObjectId
-        if (modelName.toLowerCase() === 'stock') {
+          }
+          const safeOrganizationId = new ObjectId(organizationId);
+        
+          // Crear una copia de la consulta original
+          let query = { ...q };
+        
+          // Asegurar que organization_id esté presente y sea ObjectId
+          query.organization_id = safeOrganizationId;
+        
+          // Si el modelo es 'stock', asegurar que project_id esté presente y sea ObjectId
+          if (modelName.toLowerCase() === 'stock') {
             if (!projectId) {
-                console.error('project_id es obligatorio para el modelo stock');
-                return res.status(400).json({ error: 'project_id es obligatorio para el modelo stock' });
+              console.error('project_id es obligatorio para el modelo stock');
+              return res.status(400).json({ error: 'project_id es obligatorio para el modelo stock' });
             }
             const safeProjectId = new ObjectId(projectId);
             query.project_id = safeProjectId;
-        }
-
-        console.log('Query de búsqueda:', query);
-
-        let updatedIds = [];
-
-        if (multi) {
+          }
+        
+          // Manejo flexible del campo apartment
+          if (query.apartment) {
+            query.apartment = { 
+              $in: [
+                query.apartment, 
+                typeof query.apartment === 'string' ? parseInt(query.apartment, 10) : query.apartment.toString()
+              ]
+            };
+          }
+        
+          console.log('Query de búsqueda:', query);
+        
+          let updatedIds = [];
+        
+          if (multi) {
             // Actualización masiva
             console.log('Realizando actualización masiva');
             const updateDoc = { $set: { ...u.$set, updatedAt: new Date() } };
@@ -152,30 +162,30 @@ export const handleGPTRequest = async (req, res) => {
             
             const updateResult = await collection.updateMany(query, updateDoc);
             console.log('Resultado de actualización masiva:', updateResult);
-        } else {
+          } else {
             // Actualización individual
             console.log('Realizando actualización individual');
             const updateDoc = { $set: { ...u.$set, updatedAt: new Date() } };
             console.log('Documento de actualización:', updateDoc);
             const updateResult = await collection.findOneAndUpdate(
-                query,
-                updateDoc,
-                { returnDocument: 'after' }
+              query,
+              updateDoc,
+              { returnDocument: 'after' }
             );
             
             if (updateResult) {
-                updatedIds = [updateResult._id.toString()];
-                console.log('Documento actualizado:', updateResult);
+              updatedIds = [updateResult._id.toString()];
+              console.log('Documento actualizado:', updateResult);
             } else {
-                console.log('No se encontró documento para actualizar');
+              console.log('No se encontró documento para actualizar');
             }
-        }
-
-        console.log(`Número de IDs actualizados: ${updatedIds.length}`);
-        console.log('IDs actualizados:', updatedIds);
-
-        result = { updatedIds, count: updatedIds.length };
-        break;
+          }
+        
+          console.log(`Número de IDs actualizados: ${updatedIds.length}`);
+          console.log('IDs actualizados:', updatedIds);
+        
+          result = { updatedIds, count: updatedIds.length };
+          break;
       case 'delete':
         result = await collection.findOneAndDelete({ ...command, organization_id: new ObjectId(organizationId) });
         if (!result) {
