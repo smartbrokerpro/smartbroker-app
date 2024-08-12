@@ -142,6 +142,7 @@ export const handleSearchRequest = async (req, res) => {
         county_name: result.county_name,
         down_payment_bonus: result.down_payment_bonus,
         discount: result.discount,
+        real_estate_company_name: result.real_estate_company_name,
         link: `http://localhost:3000/projects/${result.project_id}/stock/${result._id}`
       };
     });
@@ -209,6 +210,7 @@ export const handleSearchRequest = async (req, res) => {
     }
 
     const columns = [
+      { id: 'real_estate_company_name', label: 'Inmobiliaria' },
       { id: 'project_name', label: 'Proyecto' },
       { id: 'apartment', label: 'Unidad' },
       { id: 'current_list_price', label: 'Precio' },
