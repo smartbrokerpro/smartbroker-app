@@ -15,7 +15,9 @@ import {
   FormControlLabel,
   TextField,
   InputAdornment,
-  Pagination
+  Pagination,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ExploreIcon from '@mui/icons-material/Explore';
@@ -28,9 +30,10 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import Typewriter from 'typewriter-effect';
 import ModalUnitDetails from './ModalUnitDetails';
-import LottieLoader from './LottieLoader'; // Import the LottieLoader component
-
-import smartyImage from '/public/images/smarty.svg'; // Asegúrate de que la ruta sea correcta
+import LottieLoader from './LottieLoader';
+import { useSession } from 'next-auth/react';
+import smartyImage from '/public/images/smarty.svg';
+import { useNotification } from '@/context/NotificationContext';
 
 const examples = [
   { icon: <FilterListIcon fontSize="large" />, text: "Muéstrame doce unidades de 2 dormitorios y 2 baños." },
@@ -88,10 +91,18 @@ const Smarty = () => {
   const [isClient, setIsClient] = useState(false);
   const [analysisText, setAnalysisText] = useState('');
   const [showTypewriter, setShowTypewriter] = useState(false);
-  const [key, setKey] = useState(0); // Added key to force re-render Typewriter
+  const [key, setKey] = useState(0);
   const [page, setPage] = useState(1);
+  const [creditsUsed, setCreditsUsed] = useState(0);
+  const [error, setError] = useState(null);
   const rowsPerPage = 12;
+  const { data: session } = useSession();
+  const showNotification = useNotification();
 
+  const organizationId = session?.user?.organization?._id;
+  const userId = session?.user?.id;
+
+  console.log(organizationId, userId)
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -112,12 +123,19 @@ const Smarty = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setPage(1); // Reset to first page
+    setPage(1);
     setLoading(true);
     setShowExamples(false);
     setShowTypewriter(false);
+    setError(null);
     try {
-      const payload = { query, sessionId, includeAnalysis };
+      const payload = { 
+        query, 
+        sessionId, 
+        includeAnalysis,
+        organizationId,
+        userId
+      };
       const res = await fetch('/api/smarty', {
         method: 'POST',
         headers: {
@@ -125,32 +143,51 @@ const Smarty = () => {
         },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (data.error && data.error.type === 'insufficient_quota') {
-        alert('You have exceeded your quota. Please check your billing details.');
-      } else {
-        setResponse(null); // Reset response to force re-render
-        setAnalysisText(''); // Reset analysis text
-        setResponse(data);
-        setTokensUsed(data.tokensUsed);
+      if (!organizationId || !userId) {
+        setError('No se pudo obtener la información de la organización o usuario.');
+        setLoading(false);
+        return;
       }
-      setLoading(false); // Ensure loading is set to false after data is fetched
+      const data = await res.json();
+      console.log('Respuesta del servidor:', data);
+      if (res.status === 403) {
+        setError('Créditos insuficientes. Por favor, recargue sus créditos.');
+      } else if (!res.ok) {
+        throw new Error(data.error || 'An error occurred');
+      } else {
+        setResponse(null);
+        setAnalysisText('');
+        setResponse(data);
+        
+        // Disparar evento personalizado para actualizar créditos
+        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: data.credits } });
+        window.dispatchEvent(creditUpdateEvent);
+        
+        showNotification(`Operación exitosa.`, 'success');
+      }
     } catch (error) {
       console.error('Error:', error.message);
-      alert('An error occurred. Please try again later.');
-      setLoading(false); // Ensure loading is set to false on error
+      setError(error.message);
     }
+    setLoading(false);
   };
-
+  
   const handleExampleClick = async (text) => {
     const newQuery = `${query} ${text}`;
     setQuery(newQuery);
-    setPage(1); // Reset to first page
+    setPage(1);
     setLoading(true);
     setShowExamples(false);
-    setShowTypewriter(false); // Reset typewriter visibility
+    setShowTypewriter(false);
+    setError(null);
     try {
-      const payload = { query: newQuery, sessionId, includeAnalysis };
+      const payload = { 
+        query: newQuery, 
+        sessionId, 
+        includeAnalysis,
+        organizationId,
+        userId
+      };
       const res = await fetch('/api/smarty', {
         method: 'POST',
         headers: {
@@ -159,16 +196,27 @@ const Smarty = () => {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      setResponse(null); // Reset response to force re-render
-      setAnalysisText(''); // Reset analysis text
-      setResponse(data);
-      setTokensUsed(data.tokensUsed);
-      setLoading(false); // Ensure loading is set to false after data is fetched
+      console.log('Respuesta del servidor:', data);
+      if (res.status === 403) {
+        setError('Créditos insuficientes. Por favor, recargue sus créditos.');
+      } else if (!res.ok) {
+        throw new Error(data.error || 'An error occurred');
+      } else {
+        setResponse(null);
+        setAnalysisText('');
+        setResponse(data);
+        
+        // Disparar evento personalizado para actualizar créditos
+        const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: data.credits } });
+        window.dispatchEvent(creditUpdateEvent);
+        
+        showNotification(`Operación exitosa. Créditos restantes: ${data.credits}`, 'success');
+      }
     } catch (error) {
       console.error('Error:', error.message);
-      alert('An error occurred. Please try again later.');
-      setLoading(false); // Ensure loading is set to false on error
+      setError(error.message);
     }
+    setLoading(false);
   };
 
   const handleOpenModal = (unit) => {
@@ -245,7 +293,7 @@ const Smarty = () => {
                 component="div"
               >
                 <Typewriter
-                  key={key} // Add key to force re-render
+                  key={key}
                   options={{
                     strings: [response.analysis ? `<b>Análisis</b>: ${analysisText}` : `<b>Resumen:</b> ${analysisText}`],
                     autoStart: true, 
@@ -292,11 +340,7 @@ const Smarty = () => {
                 />
               </Box>
             </TableContainer>
-            {tokensUsed && (
-              <Typography variant="subtitle1" color="textSecondary">
-                Tokens utilizados: {tokensUsed}
-              </Typography>
-            )}
+            
           </>
         )}
         {(!loading && (!response || !response.result || response.result.rows.length === 0) && !showExamples) && (
@@ -352,6 +396,11 @@ const Smarty = () => {
         </form>
       </Box>
       <ModalUnitDetails open={openModal} onClose={handleCloseModal} unit={selectedUnit} />
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

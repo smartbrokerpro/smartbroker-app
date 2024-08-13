@@ -10,7 +10,6 @@ const assistantMap = {
   ProjectAssistant: 'asst_li4YlhbZp8MyQ2YT3KdfJaQC',
   StockAssistant: 'asst_abc1234XYZ',
   AnalysisAssistant: 'asst_Ad4FdKxBOWP3hXXG96tXrMCq',
-  // Add more assistants as needed
 };
 
 const createThread = async () => {
@@ -69,30 +68,41 @@ const getTokenUsage = async (threadId, runId) => {
   console.log('Getting token usage for thread:', threadId, runId);
   const response = await openai.beta.threads.runs.retrieve(threadId, runId);
   console.log('Token usage response:', response);
-  return response.usage;
+  return response.usage ? response.usage.total_tokens : 0;
 };
 
 export const handleSearchRequest = async (req, res) => {
-  const { query, sessionId, includeAnalysis } = req.body;
+  const { query, sessionId, includeAnalysis, organizationId, userId } = req.body;
 
-  if (!query) {
-    console.log('No se proporcionó una consulta.');
-    return res.status(400).json({ error: 'Se requiere una consulta' });
+  if (!query || !sessionId || !organizationId || !userId) {
+    console.log('Missing required parameters');
+    return res.status(400).json({ error: 'Missing required parameters' });
   }
 
-  if (!sessionId) {
-    console.log('No se proporcionó un ID de sesión.');
-    return res.status(400).json({ error: 'Se requiere un ID de sesión' });
-  }
+  let totalTokensUsed = 0;
 
   try {
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+
+    // Obtener la organización y verificar los créditos
+    const organizationsCollection = db.collection('organizations');
+    const organization = await organizationsCollection.findOne({ _id: new ObjectId(organizationId) });
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    console.log('Organización encontrada:', organization);
+
     console.log('Iniciando creación de thread para ProjectAssistant...');
     const thread = await createThread();
     const threadId = thread.id;
     await addMessageToThread(threadId, query);
-    await runAssistantOnThread(threadId, 'ProjectAssistant');
-    const runId = await waitForCompletion(threadId);
-    const initialResponse = await getAssistantResponse(threadId, runId);
+    const projectRun = await runAssistantOnThread(threadId, 'ProjectAssistant');
+    const projectRunId = await waitForCompletion(threadId);
+    const initialResponse = await getAssistantResponse(threadId);
+
+    totalTokensUsed += await getTokenUsage(threadId, projectRunId);
 
     if (!initialResponse) {
       throw new Error('No se recibió respuesta del asistente.');
@@ -106,8 +116,6 @@ export const handleSearchRequest = async (req, res) => {
       return res.status(400).json({ error: 'Formato de respuesta incompleto desde el asistente', initialResponse });
     }
 
-    const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB);
     const stockCollection = db.collection('stock');
     const projectsCollection = db.collection('projects');
     let results;
@@ -199,9 +207,11 @@ export const handleSearchRequest = async (req, res) => {
       const analysisThread = await createThread();
       const analysisThreadId = analysisThread.id;
       await addMessageToThread(analysisThreadId, `Analiza el siguiente resumen de resultados y proporciona un análisis estadístico en formato de texto. Resumen de resultados: ${JSON.stringify(summary, null, 2)}`);
-      await runAssistantOnThread(analysisThreadId, 'AnalysisAssistant');
+      const analysisRun = await runAssistantOnThread(analysisThreadId, 'AnalysisAssistant');
       const analysisRunId = await waitForCompletion(analysisThreadId);
-      analysisResponse = await getAssistantResponse(analysisThreadId, analysisRunId);
+      analysisResponse = await getAssistantResponse(analysisThreadId);
+
+      totalTokensUsed += await getTokenUsage(analysisThreadId, analysisRunId);
 
       if (!analysisResponse) {
         throw new Error('No se recibió respuesta del asistente para el análisis.');
@@ -223,13 +233,34 @@ export const handleSearchRequest = async (req, res) => {
       { id: 'link', label: '', format: value => `<button onClick="window.location.href='${value}'">Ver Unidad</button>` }
     ];
 
+    const creditsUsed = Math.ceil(totalTokensUsed / 1000);
+
+    console.log('Créditos actuales:', organization.credits.current);
+    console.log('Créditos a usar:', creditsUsed);
+
+    if (organization.credits.current < creditsUsed) {
+      return res.status(403).json({ error: 'Insufficient credits' });
+    }
+
+    // Actualizar los créditos de la organización
+    await organizationsCollection.updateOne(
+      { _id: new ObjectId(organizationId) },
+      { $inc: { 'credits.current': -creditsUsed } }
+    );
+
+    console.log('Créditos actualizados');
+
+    // Obtener la organización actualizada
+    const updatedOrganization = await organizationsCollection.findOne({ _id: new ObjectId(organizationId) });
+
     const finalResponse = {
       analysis: analysisResponse,
       result: {
         columns: columns,
         rows: summarizedResults
       },
-      summary: summary
+      summary: summary,
+      credits: updatedOrganization.credits.current
     };
 
     res.status(200).json(finalResponse);
