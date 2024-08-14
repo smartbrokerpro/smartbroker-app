@@ -6,7 +6,6 @@ import { Drawer, List, ListItem, ListItemIcon, ListItemText, Tooltip, Divider, B
 import HomeIcon from '@mui/icons-material/Home';
 import BusinessIcon from '@mui/icons-material/Business';
 import ApartmentIcon from '@mui/icons-material/Apartment';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import GroupIcon from '@mui/icons-material/Group';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
@@ -17,15 +16,14 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import Image from 'next/image';
-import ColorModeSwitcher from './ColorModeSwitcher';
 
 const Sidebar = ({ collapsed, onToggle }) => {
   const router = useRouter();
   const { data: session } = useSession();
-  console.log("session", session);
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [currentCredits, setCurrentCredits] = useState(0);
   const [maxCredits, setMaxCredits] = useState(4000); // Total de créditos
+  const environment = process.env.NEXT_PUBLIC_ENVIRONMENT;
 
   useEffect(() => {
     const fetchCredits = async () => {
@@ -114,7 +112,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
       <Box>
         <List>
           <ListItem>
-            <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', p: 2, position: 'relative' }}>
               <Image
                 src="/images/logo.png"
                 alt="Logo"
@@ -122,6 +120,24 @@ const Sidebar = ({ collapsed, onToggle }) => {
                 height={40}
                 style={{ cursor: 'pointer' }}
               />
+              {!collapsed && environment && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    backgroundColor: environment === 'prod' ? 'red' : 'green',
+                    color: 'white',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
+                    fontSize: '0.5rem',
+                    zIndex: 1,
+                  }}
+                >
+                  {environment === 'prod' ? 'PROD' : 'DEV'}
+                </Typography>
+              )}
             </Box>
           </ListItem>
           <ListItem button onClick={onToggle} align="right">
@@ -131,35 +147,34 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </ListItem>
           <Divider />
           {menuItems.map((item) => (
-          <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
-            <Link href={item.href} passHref>
-              <ListItem 
-                button 
-                disabled={item.disabled}
-                sx={{
-                  borderRadius: '0 2rem 2rem 0',
-                  backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
-                  color: isActiveRoute(item.href) ? 'black' : 'inherit',
-                  '&:hover': {
-                    backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
-                    color: isActiveRoute(item.href) ? 'black' : 'white',
-                  },
-                  pointerEvents: item.disabled ? 'none' : 'auto',
-                  opacity: item.disabled ? 0.5 : 1,
-                }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                {!collapsed && <ListItemText primary={item.text} />}
-              </ListItem>
-            </Link>
-          </Tooltip>
-        ))}
-
+            <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
+              <Link href={item.href} passHref>
+                <ListItem
+                  button
+                  disabled={item.disabled}
+                  sx={{
+                    borderRadius: '0 2rem 2rem 0',
+                    backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
+                    color: isActiveRoute(item.href) ? 'black' : 'inherit',
+                    '&:hover': {
+                      backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
+                      color: isActiveRoute(item.href) ? 'black' : 'white',
+                    },
+                    pointerEvents: item.disabled ? 'none' : 'auto',
+                    opacity: item.disabled ? 0.5 : 1,
+                  }}
+                >
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  {!collapsed && <ListItemText primary={item.text} />}
+                </ListItem>
+              </Link>
+            </Tooltip>
+          ))}
         </List>
       </Box>
       
       <Box sx={{ px: 2, pb: 2 }}>
-        <Divider sx={{borderColor:'#333333'}}/>
+        <Divider sx={{ borderColor: '#333333' }} />
         <Box sx={{ pt: 2, height: 50, width: 'auto', position: 'relative' }}>
           <Image
             src={session?.user?.organization?.logo}
@@ -169,7 +184,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
             style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
           />
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb:2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <Avatar alt={session?.user?.name} src={session?.user?.image} sx={{ width: 32, height: 32 }} />
           {!collapsed && (
             <Box sx={{ ml: 2 }}>
@@ -178,19 +193,18 @@ const Sidebar = ({ collapsed, onToggle }) => {
             </Box>
           )}
         </Box>
-        <Divider sx={{borderColor:'#222222', borderStyle:'dotted'}}/>
-        
+        <Divider sx={{ borderColor: '#222222', borderStyle: 'dotted' }} />
+
         {/* Nueva sección para los créditos */}
         <Box sx={{ mt: 2, mb: 2 }}>
-          
           <LinearProgress variant="determinate" value={(currentCredits / maxCredits) * 100} sx={{ height: 10, borderRadius: 5, backgroundColor: 'gray', '& .MuiLinearProgress-bar': { backgroundColor: '#86DB2E' } }} />
           <Typography variant="caption" sx={{ color: 'white' }}>
             {currentCredits} / {maxCredits} créditos
           </Typography>
         </Box>
 
-        <Divider sx={{borderColor:'#222222', borderStyle:'dotted'}}/>
-        
+        <Divider sx={{ borderColor: '#222222', borderStyle: 'dotted' }} />
+
         <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', mt: 2 }}>
           <Tooltip title="Configuración" placement="top">
             <IconButton sx={{ color: 'white' }}>
