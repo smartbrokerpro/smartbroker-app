@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const {
+    const { 
       projectsToCreate,
       projectsToUpdate,
       unitsToCreate,
