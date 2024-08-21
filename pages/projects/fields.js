@@ -2,7 +2,7 @@
 // import { getStockModel } from '@/models/stockModel';
 
 export default async function handler(req, res) {
-  res.status(405).end(`Method ${req.method} Not Allowed`);
+       res.status(500).json({ error: 'Unable to fetch model fields' });
 
   // if (req.method === 'GET') {
   //   try {
