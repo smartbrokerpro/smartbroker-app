@@ -13,17 +13,17 @@ import {
   Avatar,
   CircularProgress,
   Typography,
-  Pagination
+  Pagination,
+  Snackbar
 } from '@mui/material';
 
 const truncateString = (str, num) => {
-  if(str == undefined){
+  if (str == undefined) {
     return '-';
   }
   if (str?.length <= num) {
     return str;
   }
- 
   return str?.slice(0, num) + '...';
 };
 
@@ -31,6 +31,7 @@ const RealEstateCompaniesPage = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   const rowsPerPage = 10;
 
   useEffect(() => {
@@ -39,14 +40,21 @@ const RealEstateCompaniesPage = () => {
 
   const fetchCompanies = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/real_estate_companies');
+      if (!response.ok) {
+        throw new Error('Failed to fetch companies');
+      }
       const data = await response.json();
       if (data.success) {
         setCompanies(data.data);
+      } else {
+        throw new Error(data.message || 'Failed to fetch companies');
       }
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching companies:', error);
+      setSnackbarMessage('Error fetching companies: ' + error.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -82,7 +90,7 @@ const RealEstateCompaniesPage = () => {
           </TableHead>
           <TableBody>
             {companies.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((company) => (
-              <TableRow key={company._id.$oid}>
+              <TableRow key={company._id}>
                 <TableCell>
                   <Avatar alt={company.name} src={company.logo || '/images/fallback.jpg'} />
                 </TableCell>
@@ -110,6 +118,12 @@ const RealEstateCompaniesPage = () => {
           color="primary"
         />
       </Box>
+      <Snackbar
+        open={!!snackbarMessage}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarMessage('')}
+        message={snackbarMessage}
+      />
     </Box>
   );
 };

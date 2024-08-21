@@ -42,10 +42,8 @@ const InfoBox = ({ title, value }) => (
           border: '1px solid #9AD850',
         }}
       >
-        {/* Contenido Principal */}
         <FittyText>{value}</FittyText>
 
-        {/* Superíndice */}
         <Box
           sx={{
             position: 'absolute',

@@ -72,7 +72,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           height: 140,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundImage: `url(${project?.gallery.length > 0 ? project?.gallery[0] : fallbackImage})`,
+          backgroundImage: `url(${project?.gallery?.length > 0 ? project?.gallery[0] : fallbackImage})`,
           position: 'relative'
         }}
         title={project?.name}

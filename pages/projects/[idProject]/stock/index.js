@@ -255,7 +255,7 @@ export default function StockPage() {
                   href={project.reservationInfo.hyperlink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{ color: 'white', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
+                  sx={{ color: 'black', border:'none', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
                 >
                   Ir al sitio de pago
                 </Button>
@@ -266,7 +266,7 @@ export default function StockPage() {
                   href={project.reservationInfo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{ color: 'white', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
+                  sx={{ color: 'black', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
                 >
                   Ir al sitio de pago
                 </Button>
