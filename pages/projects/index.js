@@ -266,16 +266,16 @@ const ProjectsPage = () => {
           tooltipTitle="Crear proyecto"
           onClick={() => router.push('/projects/create')}
         />
-        <SpeedDialAction
+        {/* <SpeedDialAction
           icon={<AddHomeWorkIcon />}
           tooltipTitle="Carga masiva de proyectos"
           onClick={() => router.push('/projects/bulk-upload')}
-        />
+        /> */}
         <SpeedDialAction
           icon={<DomainAddIcon />}
 
           tooltipTitle="Carga masiva de stock"
-          onClick={() => router.push('/projects/bulk-upload-stock')}
+          onClick={() => router.push('/projects/upload')}
         />
       </SpeedDial>
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
