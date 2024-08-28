@@ -39,6 +39,11 @@ const nextConfig = {
       },
     ],
   },
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // Aumentar el límite de tamaño de solicitud a 10 MB
+    },
+  },
 };
 
 console.log('Next.js config loaded');

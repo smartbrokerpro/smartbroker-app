@@ -1,5 +1,3 @@
-//execute-update.js
-
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb';
 
@@ -12,6 +10,47 @@ function omit(obj, keys) {
     Object.entries(obj).filter(([key]) => !keys.includes(key))
   );
 }
+
+function normalizeString(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+const countyCache = new Map();
+
+async function getCountyAndRegion(db, countyName) {
+  const normalizedCountyName = normalizeString(countyName);
+  
+  if (countyCache.has(normalizedCountyName)) {
+    return countyCache.get(normalizedCountyName);
+  }
+  
+  const countiesCursor = await db.collection('counties').find();
+  const counties = await countiesCursor.toArray();
+  const county = counties.find(county => normalizeString(county.name) === normalizedCountyName);
+
+  if (!county) {
+    throw new Error(`No county found for name: ${countyName}`);
+  }
+
+  const region = await db.collection('regions').findOne({
+    _id: ensureObjectId(county.region_id)
+  });
+
+  if (!region) {
+    throw new Error(`No region found for region_id: ${county.region_id}`);
+  }
+
+  const result = {
+    countyId: county._id,
+    countyName: county.name,
+    regionId: region._id,
+    regionName: region.region
+  };
+
+  countyCache.set(normalizedCountyName, result);
+  return result;
+}
+
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -45,20 +84,37 @@ export default async function handler(req, res) {
     // Crear proyectos y mantener un mapeo de nombres a IDs
     const projectNameToIdMap = new Map();
     if (projectsToCreate.length > 0) {
-      const projectsToInsert = projectsToCreate.map(project => ({
-        ...project,
-        _id: new ObjectId(),
-        organization_id: ensureObjectId(organizationId),
-        real_estate_company_id: ensureObjectId(project.real_estate_company_id),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+      const projectsToInsert = [];
 
+      for (const project of projectsToCreate) {
+        const {
+          countyId,
+          countyName,
+          regionId,
+          regionName
+        } = await getCountyAndRegion(db, project.county_name);
+
+        projectsToInsert.push({
+          ...project,
+          _id: new ObjectId(),
+          organization_id: ensureObjectId(organizationId),
+          real_estate_company_id: ensureObjectId(project.real_estate_company_id),
+          county_id: countyId,
+          county_name: countyName,
+          region_id: regionId,
+          region_name: regionName,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+
+      console.log('Projects to be inserted:', JSON.stringify(projectsToInsert, null, 2));
+      
+      // Uncomment the following lines when ready to write to the database
       const createProjectsResult = await db.collection('projects').insertMany(projectsToInsert);
       result.projectsCreated = createProjectsResult.insertedCount;
       console.log(`Created ${result.projectsCreated} projects`);
 
-      // Crear el mapeo de nombres de proyecto a IDs
       projectsToInsert.forEach(project => {
         projectNameToIdMap.set(project.name, project._id);
       });
@@ -87,19 +143,36 @@ export default async function handler(req, res) {
     }
 
     // Actualizar unidades con los IDs de proyecto correctos y crear unidades
-    const updatedUnitsToCreate = unitsToCreate.map(unit => {
+    const updatedUnitsToCreate = [];
+
+    for (const unit of unitsToCreate) {
       const projectId = projectNameToIdMap.get(unit.project_name) || ensureObjectId(unit.project_id);
-      return {
+
+      const {
+        countyId,
+        countyName,
+        regionId,
+        regionName
+      } = await getCountyAndRegion(db, unit.county_name);
+
+      updatedUnitsToCreate.push({
         ...unit,
         _id: new ObjectId(),
         project_id: projectId,
         organization_id: ensureObjectId(organizationId),
         real_estate_company_id: ensureObjectId(unit.real_estate_company_id),
+        county_id: countyId,
+        county_name: countyName,
+        region_id: regionId,
+        region_name: regionName,
         createdAt: new Date(),
         updatedAt: new Date()
-      };
-    });
+      });
+    }
 
+    console.log('Units to be created:', JSON.stringify(updatedUnitsToCreate, null, 2));
+    
+    // Uncomment the following lines when ready to write to the database
     if (updatedUnitsToCreate.length > 0) {
       const createUnitsResult = await db.collection('stock').insertMany(updatedUnitsToCreate);
       result.unitsCreated = createUnitsResult.insertedCount;

@@ -1,10 +1,9 @@
-// components/HeaderMapping.js
-
 import React, { useState, useEffect } from 'react';
 import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardContent, Typography, Box, Chip, CircularProgress
-} from '@mui/material';import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
+  List, ListItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardContent, Typography, Box, Chip, CircularProgress, Divider, Alert
+} from '@mui/material';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import StarIcon from '@mui/icons-material/Star';
 
 const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, file, organizationId }) => {
   const [mapping, setMapping] = useState({});
@@ -13,40 +12,68 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
   const [stockFields, setStockFields] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [openSummaryDialog, setOpenSummaryDialog] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+
+  const requiredFields = ['apartment', 'name', 'county_name', 'address', 'typology', 'orientation', 'current_list_price'];
+  
+  const isFieldRequired = (field) => requiredFields.includes(field);
+
+  const isRequiredFieldsMapped = () => {
+    return requiredFields.every(field => {
+
+      if (field === 'county_name') {
+        return Object.values(mapping).some(mappedField => 
+          mappedField.field === field && mappedField.model === 'project'
+        );
+      }
+
+      return Object.values(mapping).some(mappedField => 
+        mappedField.field === field
+      );
+    });
+  };
+  
+
+  const hiddenInStockFields = ['county_name'];
 
   const internalFields = [
     "_id", "createdAt", "created_at", "updated_at", "updatedAt", "organization_id", 
     "project_id", "county_id", "region_id", "country_id", "location.lat", 
     "location.lng", "min_price", "max_price", "gallery", "status_id", "__v", 
-    "real_estate_company_id", "typologies"
+    "real_estate_company_id", "typologies", "project_name", "delivery_date"
   ];
+
+  const combinedStockFields = stockFields.filter(field => 
+    !internalFields.includes(field) && !hiddenInStockFields.includes(field)
+  );
 
   const fieldLabels = {
     "name": "Nombre del Proyecto",
     "address": "Dirección",
     "commercialConditions": "Condiciones Comerciales",
     "delivery_date": "Fecha de Entrega",
-    "deliveryDateDescr": "Descripción de Fecha de Entrega",
+    "deliveryDateDescr": "Fecha de Entrega",
     "deliveryType": "Tipo de Entrega",
     "down_payment_method": "Método de Pago Inicial",
     "installments": "Cuotas",
     "promiseSignatureType": "Tipo de Firma de Promesa",
     "reservationInfo": "Información de Reserva",
     "reservationValue": "Valor de Reserva",
-    "apartment": "Apartamento",
+    "apartment": "Unidad",
     "model": "Modelo",
     "typology": "Tipología",
     "orientation": "Orientación",
     "interior_surface": "Superficie Interior",
     "terrace_surface": "Superficie Terraza",
     "total_surface": "Superficie Total",
-    "current_list_price": "Precio de Lista Actual",
-    "down_payment_bonus": "Bono de Pago Inicial",
+    "current_list_price": "Precio de Lista",
+    "down_payment_bonus": "Bono Pie",
     "discount": "Descuento",
-    "rent": "Renta",
-    "county_name": "Nombre de la Comuna",
-    "real_estate_company_name": "Nombre de la Empresa Inmobiliaria",
-    "region_name": "Nombre de la Región",
+    "rent": "Valor Arriendo",
+    "county_name": "Comuna",
+    "real_estate_company_name": "Inmobiliaria",
+    "region_name": "Región",
     "available": "Disponibilidad",
     "project_name": "Nombre del Proyecto",
   };
@@ -81,17 +108,20 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
         body: JSON.stringify({ headers, projectFields, stockFields }),
       });
       const suggestions = await response.json();
-
+  
       const suggestionsWithExamples = {};
       for (let [header, suggestion] of Object.entries(suggestions)) {
         const index = headers.indexOf(header);
         const example = examples[index];
+        const normalizedModel = suggestion.model === 'proyecto' ? 'project' : suggestion.model;
+        
         suggestionsWithExamples[header] = {
           ...suggestion,
+          modelo: normalizedModel, // Normaliza la clave a inglés
           example,
         };
       }
-
+  
       setMapping(suggestionsWithExamples);
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
@@ -99,6 +129,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
       setLoading(false);
     }
   };
+  
 
   const onDragEnd = (result) => {
     const { source, destination } = result;
@@ -143,6 +174,11 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
   };
 
   const handleAnalyzeMapping = async () => {
+    if (!isRequiredFieldsMapped()) {
+      alert('Por favor, asigne todos los campos requeridos antes de analizar.');
+      return;
+    }
+
     setLoading(true);
     try {
       const finalMapping = {};
@@ -226,10 +262,16 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
   
       const result = await response.json();
       console.log('Update execution simulation result:', result);
-      // Aquí puedes manejar la respuesta, por ejemplo, mostrar un mensaje de éxito
+
+      // Cerrar el diálogo y mostrar un alert con el resumen
+      setOpenSummaryDialog(false);
+      setAlertMessage(`Actualización completada con éxito. Proyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}`);
+      setShowAlert(true);
+  
     } catch (error) {
       console.error('Error executing update:', error);
-      // Aquí puedes manejar el error, por ejemplo, mostrar un mensaje de error
+      setAlertMessage('Error ejecutando la actualización.');
+      setShowAlert(true);
     }
   };
 
@@ -250,6 +292,11 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
 
   return (
     <>
+      {showAlert && (
+        <Alert severity="success" onClose={() => setShowAlert(false)} sx={{ mt: 2 }}>
+          {alertMessage}
+        </Alert>
+      )}
       <DragDropContext onDragEnd={onDragEnd}>
         <Box display="flex" justifyContent="space-between">
           <Droppable droppableId="headers">
@@ -266,25 +313,34 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                   overflowY: 'auto',
                   paddingRight: 2,
                   borderRight: '1px solid #ccc',
+                  zIndex:'999'
                 }}
               >
                 <Typography variant="h6" gutterBottom>Excel Headers</Typography>
                 {headers.map((header, index) => (
                   <Draggable key={header} draggableId={header} index={index}>
-                    {(provided) => (
+                    {(provided, snapshot) => (
                       <Box
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
+                        style={{
+                          ...provided.draggableProps.style,
+                          zIndex: snapshot.isDragging ? 9000 : 'auto'
+                        }}
                         sx={{ margin: 1, paddingBottom: 0 }}
                       >
                         <Chip 
                           label={<><b>{header}</b>: <small>Ej:{examples[index]}</small></>} 
                           variant="outlined" 
                           sx={{
+                            transition:'.3s all',
                             marginBottom: 0,
-                            backgroundColor: mapping[header] ? '#2e7d32' : 'white',
-                            color: mapping[header] ? 'white' : 'black'
+                            backgroundColor: mapping[header] ? '#6CD63F' : 'white',
+                            color: mapping[header] ? 'black' : 'black',
+                            zIndex: snapshot.isDragging ? 9000 : 'auto',
+                            boxShadow: snapshot.isDragging ? '0px 15px 5px rgba(0,0,0,0.25)' : '0px 0px 0px rgba(0,0,0,0.25)',
+                            transform: snapshot.isDragging ? 'scale(1.25)' : 'scale(1)'
                           }} 
                         />
                       </Box>
@@ -295,7 +351,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
               </Box>
             )}
           </Droppable>
-
+  
           <Box width="65%">
             <Box display="flex" width="100%">
               <Box width="50%">
@@ -305,7 +361,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                     (header) => mapping[header].field === field && mapping[header].model === 'project'
                   );
                   const example = mappedHeader ? mapping[mappedHeader].example : null;
-
+  
                   return (
                     <Droppable key={field} droppableId={`project-${index}`}>
                       {(provided, snapshot) => (
@@ -315,17 +371,28 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                           sx={{
                             margin: 1,
                             padding: 1,
-                            border: `2px dotted ${mappedHeader ? '#4caf50' : '#f44336'}`,
+                            border: `2px dotted ${mappedHeader ? '#6CD63F' : '#D6993E'}`,
                             borderRadius: 1,
-                            backgroundColor: snapshot.isDraggingOver ? '#e0f7e0' : (mappedHeader ? '#4caf50' : 'transparent'),
+                            backgroundColor: snapshot.isDraggingOver ? '#6CD63F33' : (mappedHeader ? '#6CD63F' : 'transparent'),
                             transition: 'background-color 0.2s ease',
                             minHeight: 60,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            position: 'relative',
                           }}
                         >
+                          {isFieldRequired(field) && (
+                            <StarIcon 
+                              sx={{ 
+                                position: 'absolute', 
+                                top: 5, 
+                                right: 5, 
+                                color: mappedHeader ? 'white' : 'orange'
+                              }} 
+                            />
+                          )}
                           <Typography variant="caption" component="div" sx={{ marginBottom: 1 }}>
                             {fieldLabels[field] || field}
                           </Typography>
@@ -335,7 +402,11 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                                 label={mappedHeader}
                                 color="success"
                                 onDelete={() => handleRemoveMapping(mappedHeader)}
-                                sx={{ marginBottom: 1 }}
+                                sx={{ 
+                                  marginBottom: 1,
+                                  backgroundColor: '#6AAC4E',
+
+                                 }}
                               />
                               {example && (
                                 <small style={{ marginTop: '1rem' }}>
@@ -353,10 +424,10 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                   );
                 })}
               </Box>
-
+  
               <Box width="50%">
                 <Typography variant="h6">Stock</Typography>
-                {stockFields.map((field, index) => {
+                {combinedStockFields.map((field, index) => {
                   const mappedHeader = Object.keys(mapping).find(
                     (header) => mapping[header].field === field && mapping[header].model === 'stock'
                   );
@@ -371,17 +442,28 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                           sx={{
                             margin: 1,
                             padding: 1,
-                            border: `2px dotted ${mappedHeader ? '#4caf50' : '#f44336'}`,
+                            border: `2px dotted ${mappedHeader ? '#6CD63F' : '#D6993E'}`,
                             borderRadius: 1,
-                            backgroundColor: snapshot.isDraggingOver ? '#e0f7e0' : (mappedHeader ? '#4caf50' : 'transparent'),
+                            backgroundColor: snapshot.isDraggingOver ? '#6CD63F33' : (mappedHeader ? '#6CD63F' : 'transparent'),
                             transition: 'background-color 0.2s ease',
                             minHeight: 60,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            position: 'relative',
                           }}
                         >
+                          {isFieldRequired(field) && (
+                            <StarIcon 
+                              sx={{ 
+                                position: 'absolute', 
+                                top: 5, 
+                                right: 5, 
+                                color: mappedHeader ? 'white' : 'orange'
+                              }} 
+                            />
+                          )}
                           <Typography variant="caption" component="div" sx={{ marginBottom: 1 }}>
                             {fieldLabels[field] || field}
                           </Typography>
@@ -391,8 +473,10 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                                 label={mappedHeader}
                                 color="success"
                                 onDelete={() => handleRemoveMapping(mappedHeader)}
-                                sx={{ marginBottom: 1 }}
-                              />
+                                sx={{ 
+                                  marginBottom: 1,
+                                  backgroundColor: '#6AAC4E',
+                                }}                              />
                               {example && (
                                 <small style={{ marginTop: "1rem", textAlign:'center' }}>
                                   Ejemplo: {example}
@@ -409,81 +493,182 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                   );
                 })}
               </Box>
+
             </Box>
           </Box>
         </Box>
       </DragDropContext>
-
-      <Button onClick={handleAnalyzeMapping} variant="contained" color="primary" sx={{ mt: 2 }}>
+  
+      <Button 
+        onClick={handleAnalyzeMapping} 
+        variant="contained" 
+        color="primary" 
+        sx={{ mt: 2 }}
+        disabled={!isRequiredFieldsMapped()}
+      >
         Analyze Mapping
       </Button>
-
+  
       <Dialog open={openSummaryDialog} onClose={() => setOpenSummaryDialog(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Summary of Analysis</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>Overall Summary</Typography>
-            <Grid container spacing={2}>
-              {Object.entries(analysisResult?.summary || {}).map(([key, value]) => (
-                <Grid item xs={12} sm={6} md={4} key={key}>
-                  <Card>
+        <DialogTitle sx={{ backgroundColor: '#6AAC4E', color: 'white' }}>Resumen del Análisis</DialogTitle>
+        <DialogContent sx={{ mt: 4 }}>
+          {analysisResult ? (
+            <Box sx={{ mb: 4 }}>
+              {/* Sección de Proyectos */}
+              <Typography variant="h6" gutterBottom>Proyectos</Typography>
+              <Grid container spacing={2}>
+                {Object.entries(analysisResult.summary || {})
+                  .filter(([key]) => key.toLowerCase().includes('project'))
+                  .map(([key, value]) => (
+                    <Grid item xs={12} sm={6} md={4} key={key}>
+                      <Card sx={{ borderLeft: '5px solid #6AAC4E' }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" color="textSecondary">
+                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: '#6AAC4E', fontWeight: 'bold' }}>
+                            {value}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                ))}
+              </Grid>
+
+              {/* Sección de Unidades */}
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" gutterBottom>Unidades</Typography>
+                <Grid container spacing={2}>
+                  {Object.entries(analysisResult.summary || {})
+                    .filter(([key]) => key.toLowerCase().includes('unit'))
+                    .map(([key, value]) => (
+                      <Grid item xs={12} sm={6} md={4} key={key}>
+                        <Card sx={{ borderLeft: '5px solid #D6993E' }}>
+                          <CardContent>
+                            <Typography variant="subtitle1" color="textSecondary">
+                              {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            </Typography>
+                            <Typography variant="h5" sx={{ color: '#D6993E', fontWeight: 'bold' }}>
+                              {value}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                  ))}
+                </Grid>
+              </Box>
+
+              {/* Resumen Detallado por Proyecto */}
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" gutterBottom>Resumen Detallado por Proyecto</Typography>
+                <Grid container spacing={2}>
+                  {analysisResult.detailedProjectSummary?.map((project, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Card sx={{ position: 'relative', borderLeft: `5px solid ${project.isNewProject ? '#6AAC4E' : '#D6993E'}`, padding: 2 }}>
+                        <CardContent>
+                          <Typography variant="h6" component="div" sx={{ textAlign: 'center', color: '#6AAC4E', position: 'relative', marginBottom: 2 }}>
+                            {project.projectName}
+                            <Typography
+                              variant="caption"
+                              component="sup"
+                              sx={{ position: 'absolute', top: -5, right: 0, color: project.isNewProject ? '#6AAC4E' : '#D6993E' }}
+                            >
+                              {project.isNewProject ? 'NEW' : 'UPDATED'}
+                            </Typography>
+                          </Typography>
+                          
+                          <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', marginBottom: 2 }}>
+                            <Box component="tbody">
+                              <Box component="tr">
+                                <Box component="th" sx={{ padding: '4px 8px', textAlign: 'right' }}>
+                                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    Nuevas
+                                  </Box>
+                                </Box>
+                                <Box component="td" sx={{ padding: '4px 8px', textAlign: 'left', color: '#6AAC4E', fontWeight: 'bold', fontSize: '1.5rem' }}>
+                                  {project.newUnits}
+                                </Box>
+                              </Box>
+
+                              <Box component="tr">
+                                <Box component="th" sx={{ padding: '4px 8px', textAlign: 'right' }}>
+                                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    Actualizadas
+                                  </Box>
+                                </Box>
+                                <Box component="td" sx={{ padding: '4px 8px', textAlign: 'left', color: '#D6993E', fontWeight: 'bold', fontSize: '1.5rem' }}>
+                                  {project.updatedUnits}
+                                </Box>
+                              </Box>
+
+                              <Box component="tr">
+                                <Box component="th" sx={{ padding: '4px 8px', textAlign: 'right' }}>
+                                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    No Disponible
+                                  </Box>
+                                </Box>
+                                <Box component="td" sx={{ padding: '4px 8px', textAlign: 'left', color: 'error.main', fontWeight: 'bold', fontSize: '1.5rem' }}>
+                                  {project.unavailableUnits}
+                                </Box>
+                              </Box>
+
+                              <Box component="tr" sx={{ borderTop: '1px solid #ddd', marginTop: 2 }}>
+                                <Box component="th" sx={{ padding: '4px 8px', textAlign: 'right', fontWeight: 'bold' }}>
+                                  Total
+                                </Box>
+                                <Box component="td" sx={{ padding: '4px 8px', textAlign: 'left', fontWeight: 'bold', fontSize: '1.5rem' }}>
+                                  {project.totalUnits}
+                                </Box>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+
+                    </Grid>
+                  ))}
+                </Grid>
+
+              </Box>
+
+              {/* Sección de Errores */}
+              {analysisResult.errors && analysisResult.errors.length > 0 && (
+                <Box sx={{ mt: 4 }}>
+                  <Typography variant="h6" gutterBottom>Errores</Typography>
+                  <Card sx={{ borderLeft: '5px solid #D32F2F' }}>
                     <CardContent>
-                      <Typography variant="h6" component="div">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </Typography>
-                      <Typography variant="h4">{value}</Typography>
+                      <List>
+                        {analysisResult.errors.map((error, index) => (
+                          <ListItem key={index}>
+                            <ListItemIcon>
+                              <ErrorIcon sx={{ color: '#D32F2F' }} />
+                            </ListItemIcon>
+                            <ListItemText primary={error} />
+                          </ListItem>
+                        ))}
+                      </List>
                     </CardContent>
                   </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-
-          <Box>
-            <Typography variant="h6" gutterBottom>Detailed Project Summary</Typography>
-            <Grid container spacing={2}>
-              {analysisResult?.detailedProjectSummary?.map((project, index) => (
-                <Grid item xs={12} sm={6} md={4} key={index}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6" component="div">
-                        {project.projectName} {project.isNewProject ? "(New Project)" : "(Existing Project)"}
-                      </Typography>
-                      <Typography>New Units: {project.newUnits}</Typography>
-                      <Typography>Updated Units: {project.updatedUnits}</Typography>
-                      <Typography>Units to Mark Unavailable: {project.unavailableUnits}</Typography>
-                      <Typography>Total Affected Units: {project.totalUnits}</Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-
-          {analysisResult?.errors && analysisResult.errors.length > 0 && (
-            <Box sx={{ mt: 4 }}>
-              <Typography variant="h6" gutterBottom>Errors</Typography>
-              <Card>
-                <CardContent>
-                  <Typography component="ul">
-                    {analysisResult.errors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </Typography>
-                </CardContent>
-              </Card>
+                </Box>
+              )}
             </Box>
+          ) : (
+            <Typography variant="body1">No hay resultados de análisis disponibles.</Typography>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenSummaryDialog(false)}>Close</Button>
+        <DialogActions sx={{ backgroundColor: '#F5F5F5' }}>
+          <Button onClick={() => setOpenSummaryDialog(false)} sx={{ color: '#6AAC4E' }}>Cerrar</Button>
           <Button onClick={handleExecuteUpdate} color="primary" variant="contained">
-            Execute Update
+            Ejecutar Actualización
           </Button>
         </DialogActions>
       </Dialog>
+
+
+
     </>
   );
+  
 };
 
 export default HeaderMapping;

@@ -14,6 +14,7 @@ export default function UploadExcel() {
   const [examples, setExamples] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [file, setFile] = useState(null);
+  const [fileName, setFileName] = useState('');
   const [openNewCompanyDialog, setOpenNewCompanyDialog] = useState(false);
   const [newCompany, setNewCompany] = useState({
     name: '',
@@ -28,31 +29,18 @@ export default function UploadExcel() {
   const [inputValue, setInputValue] = useState('');
   const [showMapping, setShowMapping] = useState(false);
   const [headerMapping, setHeaderMapping] = useState({});
+  const [analysisResult, setAnalysisResult] = useState(null);
   const { data: session } = useSession();
 
-  useEffect(() => {
-    async function fetchCompanies() {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/real_estate_companies');
-        if (!response.ok) {
-          throw new Error('Failed to fetch real estate companies');
-        }
-        const result = await response.json();
-        if (result.success) {
-          setRealEstateCompanies(result.data);
-        } else {
-          throw new Error(result.message || 'Failed to fetch real estate companies');
-        }
-      } catch (error) {
-        console.error('Error fetching real estate companies:', error);
-        setSnackbarMessage('Error fetching real estate companies');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchCompanies();
-  }, []);
+  const resetFileState = () => {
+    setFile(null);
+    setFileName('');
+    setExcelHeaders([]);
+    setExamples([]);
+    setShowMapping(false);
+    setHeaderMapping({});
+    setAnalysisResult(null);
+  };
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
@@ -65,8 +53,10 @@ export default function UploadExcel() {
 
   async function handleFileDrop(acceptedFiles) {
     setIsLoading(true);
+    resetFileState();
     const droppedFile = acceptedFiles[0];
     setFile(droppedFile);
+    setFileName(droppedFile.name);
     try {
       const { headers, examples } = await extractHeadersAndExamplesFromExcel(droppedFile);
       setExcelHeaders(headers);
@@ -79,7 +69,7 @@ export default function UploadExcel() {
       setIsLoading(false);
     }
   }
-
+  
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     setNewCompany(prevState => ({
@@ -87,7 +77,7 @@ export default function UploadExcel() {
       [name]: value
     }));
   };
-
+  
   const handleCreateNewCompany = async () => {
     if (!newCompany.name.trim()) {
       setSnackbarMessage('Company name cannot be empty');
@@ -128,6 +118,30 @@ export default function UploadExcel() {
     }
   };
 
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/real_estate_companies');
+        if (!response.ok) {
+          throw new Error('Failed to fetch real estate companies');
+        }
+        const result = await response.json();
+        if (result.success) {
+          setRealEstateCompanies(result.data);
+        } else {
+          throw new Error(result.message || 'Failed to fetch real estate companies');
+        }
+      } catch (error) {
+        console.error('Error fetching real estate companies:', error);
+        setSnackbarMessage('Error fetching real estate companies');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchCompanies();
+  }, []);
+  
   const handleMappingComplete = (mapping) => {
     console.log("Mapping before sending to backend:", JSON.stringify(mapping, null, 2));
     setHeaderMapping(mapping);
@@ -205,7 +219,7 @@ export default function UploadExcel() {
   }
 
   return (
-    <Box sx={{ maxWidth: 600, margin: 'auto', mt: 4 }}>
+    <Box sx={{ maxWidth: 800, margin: 'auto', mt: 4 }}>
       <Typography variant="h4" gutterBottom>Upload Excel File</Typography>
       
       <Autocomplete
@@ -252,24 +266,41 @@ export default function UploadExcel() {
         renderInput={(params) => <TextField {...params} label="Select or add a Real Estate Company" />}
       />
 
-      {selectedCompany && (
-        <Box 
-          {...getRootProps()} 
-          sx={{
-            border: '2px dashed #cccccc',
-            borderRadius: 2,
-            p: 3,
-            textAlign: 'center',
-            cursor: 'pointer',
-            mb: 2,
-            '&:hover': {
-              backgroundColor: '#f0f0f0'
-            }
-          }}
-        >
-          <input {...getInputProps()} />
-          <Typography>Drag 'n' drop an Excel file here, or click to select one</Typography>
-        </Box>
+{selectedCompany && (
+        <>
+          {!file && (
+            <Box 
+              {...getRootProps()} 
+              sx={{
+                border: '2px dashed #cccccc',
+                borderRadius: 2,
+                p: 3,
+                textAlign: 'center',
+                cursor: 'pointer',
+                mb: 2,
+                '&:hover': {
+                  backgroundColor: '#f0f0f0'
+                }
+              }}
+            >
+              <input {...getInputProps()} />
+              <Typography>Drag 'n' drop an Excel file here, or click to select one</Typography>
+            </Box>
+          )}
+
+          {file && (
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography>{fileName}</Typography>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={resetFileState}
+              >
+                Change file
+              </Button>
+            </Box>
+          )}
+        </>
       )}
 
       {showMapping && (
