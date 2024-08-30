@@ -188,6 +188,22 @@ export const createProject = async (req, res) => {
     if (projectData.county_id) projectData.county_id = new ObjectId(projectData.county_id);
     if (projectData.real_estate_company_id) projectData.real_estate_company_id = new ObjectId(projectData.real_estate_company_id);
 
+    // Asegurarse de que `location` se maneje correctamente
+    if (typeof projectData.location === 'string') {
+      const [lat, lng] = projectData.location.split(',').map(Number);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        projectData.location = { lat, lng };
+      }
+    }
+
+    // Asegurarse de que `reservationInfo` esté correctamente estructurado
+    if (projectData.reservationInfo) {
+      projectData.reservationInfo = {
+        text: projectData.reservationInfo.text || '',
+        hyperlink: projectData.reservationInfo.hyperlink || ''
+      };
+    }
+
     // Insertar el nuevo proyecto
     const result = await db.collection('projects').insertOne(projectData);
 
@@ -203,6 +219,7 @@ export const createProject = async (req, res) => {
   }
 };
 
+
 export const updateProject = async (req, res) => {
   const { idProject } = req.query;
   const organizationId = req.headers['x-organization-id'];
@@ -211,23 +228,37 @@ export const updateProject = async (req, res) => {
   console.log('Organization ID:', organizationId);
 
   if (!organizationId) {
-    return res.status(400).json({ success: false, error: 'organizationId is required' });
+    return res.status(400).json({ success: false, error: 'organization_id is required' });
   }
 
   if (!ObjectId.isValid(idProject)) {
     return res.status(400).json({ success: false, error: 'Invalid project ID' });
   }
 
-  // Crear un objeto de actualización basado en los campos permitidos
   const updateData = {};
-  const allowedFields = ['name', 'address', 'county_id', 'country_id', 'real_estate_company_id', 'location', 'region_id', 'gallery', 'commercialConditions'];
+  const allowedFields = [
+    'name',
+    'address',
+    'county_id',
+    'country_id',
+    'real_estate_company_id',
+    'location',
+    'region_id',
+    'gallery',
+    'commercialConditions',
+    'deliveryType',
+    'downPaymentMethod',
+    'installments',
+    'promiseSignatureType',
+    'reservationInfo',
+    'reservationValue'
+  ];
 
   allowedFields.forEach(field => {
     if (req.body[field] !== undefined) {
       if (['county_id', 'country_id', 'real_estate_company_id', 'region_id'].includes(field)) {
         updateData[field] = new ObjectId(req.body[field]);
       } else if (field === 'location') {
-        // Verificar si location es una cadena o un objeto
         if (typeof req.body[field] === 'string') {
           const [lat, lng] = req.body[field].split(',').map(Number);
           if (!isNaN(lat) && !isNaN(lng)) {
@@ -236,13 +267,17 @@ export const updateProject = async (req, res) => {
         } else if (typeof req.body[field] === 'object') {
           updateData[field] = req.body[field];
         }
+      } else if (field === 'reservationInfo') {
+        updateData[field] = {
+          text: req.body.reservationInfo.text || '',
+          hyperlink: req.body.reservationInfo.hyperlink || ''
+        };
       } else {
         updateData[field] = req.body[field];
       }
     }
   });
 
-  // Siempre actualizar el campo updatedAt
   updateData.updatedAt = new Date();
 
   let client;
@@ -250,7 +285,6 @@ export const updateProject = async (req, res) => {
     client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
     const projectsCollection = db.collection('projects');
-    const stockCollection = db.collection('stock');
 
     console.log('Attempting to update project with data:', updateData);
 
@@ -260,35 +294,25 @@ export const updateProject = async (req, res) => {
         organization_id: new ObjectId(organizationId) 
       },
       { $set: updateData },
-      { 
-        returnDocument: 'after'
-      }
+      { returnDocument: 'after' } // Para devolver el documento actualizado
     );
 
+    // Si result es null, significa que no se encontró el documento
     if (!result) {
       console.log('Project not found or not updated');
       return res.status(404).json({ success: false, message: 'Project not found or not updated' });
     }
 
-    // Actualizar las unidades de stock relacionadas
-    const stockUpdateData = {
-      real_estate_company_name: req.body.real_estate_company_name,
-      county_name: req.body.county_name,
-      region_name: req.body.region_name
-    };
-
-    await stockCollection.updateMany(
-      { project_id: new ObjectId(idProject) },
-      { $set: stockUpdateData }
-    );
-
-    console.log('Project and related stock units updated successfully');
+    console.log('Project updated successfully:', result);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    console.error('Error updating project and stock:', error);
+    console.error('Error updating project:', error);
     res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
   }
 };
+
+
+
 
 export const deleteProject = async (req, res) => {
   const { id } = req.params;

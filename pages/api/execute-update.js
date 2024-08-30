@@ -15,21 +15,23 @@ function normalizeString(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
 
-const countyCache = new Map();
+const missingCounties = []; // Array para almacenar los detalles de las comunas no encontradas
 
-async function getCountyAndRegion(db, countyName) {
+async function getCountyAndRegion(db, countyName, projectName) {
   const normalizedCountyName = normalizeString(countyName);
-  
-  if (countyCache.has(normalizedCountyName)) {
-    return countyCache.get(normalizedCountyName);
-  }
   
   const countiesCursor = await db.collection('counties').find();
   const counties = await countiesCursor.toArray();
   const county = counties.find(county => normalizeString(county.name) === normalizedCountyName);
 
   if (!county) {
-    throw new Error(`No county found for name: ${countyName}`);
+    missingCounties.push({ countyName, projectName }); // Agrega la comuna y el proyecto no encontrados al array
+    return {
+      countyId: null,
+      countyName: null,
+      regionId: null,
+      regionName: null
+    };
   }
 
   const region = await db.collection('regions').findOne({
@@ -37,20 +39,22 @@ async function getCountyAndRegion(db, countyName) {
   });
 
   if (!region) {
-    throw new Error(`No region found for region_id: ${county.region_id}`);
+    missingCounties.push({ countyName, projectName }); // Agrega la región no encontrada al array
+    return {
+      countyId: null,
+      countyName: null,
+      regionId: null,
+      regionName: null
+    };
   }
 
-  const result = {
+  return {
     countyId: county._id,
     countyName: county.name,
     regionId: region._id,
     regionName: region.region
   };
-
-  countyCache.set(normalizedCountyName, result);
-  return result;
 }
-
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -64,7 +68,8 @@ export default async function handler(req, res) {
       unitsToCreate,
       unitsToUpdate,
       unitsToMarkUnavailable,
-      organizationId
+      organizationId,
+      realEstateCompanyName // Recibimos el nombre de la inmobiliaria desde el frontend
     } = req.body;
 
     console.log('Received data for execution:');
@@ -78,7 +83,8 @@ export default async function handler(req, res) {
       projectsUpdated: 0,
       unitsCreated: 0,
       unitsUpdated: 0,
-      unitsMarkedUnavailable: 0
+      unitsMarkedUnavailable: 0,
+      missingCounties: []
     };
 
     // Crear proyectos y mantener un mapeo de nombres a IDs
@@ -92,13 +98,14 @@ export default async function handler(req, res) {
           countyName,
           regionId,
           regionName
-        } = await getCountyAndRegion(db, project.county_name);
+        } = await getCountyAndRegion(db, project.county_name, project.name);
 
         projectsToInsert.push({
           ...project,
           _id: new ObjectId(),
           organization_id: ensureObjectId(organizationId),
           real_estate_company_id: ensureObjectId(project.real_estate_company_id),
+          real_estate_company_name: realEstateCompanyName, // Agregamos el nombre de la inmobiliaria
           county_id: countyId,
           county_name: countyName,
           region_id: regionId,
@@ -110,7 +117,6 @@ export default async function handler(req, res) {
 
       console.log('Projects to be inserted:', JSON.stringify(projectsToInsert, null, 2));
       
-      // Uncomment the following lines when ready to write to the database
       const createProjectsResult = await db.collection('projects').insertMany(projectsToInsert);
       result.projectsCreated = createProjectsResult.insertedCount;
       console.log(`Created ${result.projectsCreated} projects`);
@@ -131,6 +137,7 @@ export default async function handler(req, res) {
               $set: {
                 ...projectData,
                 real_estate_company_id: ensureObjectId(projectData.real_estate_company_id),
+                real_estate_company_name: realEstateCompanyName, // Agregamos el nombre de la inmobiliaria
                 updatedAt: new Date()
               }
             }
@@ -153,7 +160,7 @@ export default async function handler(req, res) {
         countyName,
         regionId,
         regionName
-      } = await getCountyAndRegion(db, unit.county_name);
+      } = await getCountyAndRegion(db, unit.county_name, unit.project_name);
 
       updatedUnitsToCreate.push({
         ...unit,
@@ -161,6 +168,7 @@ export default async function handler(req, res) {
         project_id: projectId,
         organization_id: ensureObjectId(organizationId),
         real_estate_company_id: ensureObjectId(unit.real_estate_company_id),
+        real_estate_company_name: realEstateCompanyName, // Agregamos el nombre de la inmobiliaria
         county_id: countyId,
         county_name: countyName,
         region_id: regionId,
@@ -172,34 +180,10 @@ export default async function handler(req, res) {
 
     console.log('Units to be created:', JSON.stringify(updatedUnitsToCreate, null, 2));
     
-    // Uncomment the following lines when ready to write to the database
     if (updatedUnitsToCreate.length > 0) {
       const createUnitsResult = await db.collection('stock').insertMany(updatedUnitsToCreate);
       result.unitsCreated = createUnitsResult.insertedCount;
       console.log(`Created ${result.unitsCreated} units`);
-    }
-
-    // Actualizar unidades existentes
-    if (unitsToUpdate.length > 0) {
-      const bulkUpdateUnits = unitsToUpdate.map(unit => {
-        const unitData = omit(unit, ['_id', 'organization_id']);
-        return {
-          updateOne: {
-            filter: { _id: ensureObjectId(unit._id), organization_id: ensureObjectId(organizationId) },
-            update: {
-              $set: {
-                ...unitData,
-                project_id: ensureObjectId(unitData.project_id),
-                real_estate_company_id: ensureObjectId(unitData.real_estate_company_id),
-                updatedAt: new Date()
-              }
-            }
-          }
-        };
-      });
-      const updateUnitsResult = await db.collection('stock').bulkWrite(bulkUpdateUnits);
-      result.unitsUpdated = updateUnitsResult.modifiedCount;
-      console.log(`Updated ${result.unitsUpdated} units`);
     }
 
     // Marcar unidades como no disponibles
@@ -219,6 +203,9 @@ export default async function handler(req, res) {
       result.unitsMarkedUnavailable = markUnavailableResult.modifiedCount;
       console.log(`Marked ${result.unitsMarkedUnavailable} units as unavailable`);
     }
+
+    // Agregar los counties faltantes al resultado final
+    result.missingCounties = missingCounties;
 
     console.log('Execution result:');
     console.log(JSON.stringify(result, null, 2));

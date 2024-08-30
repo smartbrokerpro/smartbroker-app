@@ -1,6 +1,7 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import multer from 'multer';
 import multerS3 from 'multer-s3';
+import slugify from 'slugify';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -18,7 +19,17 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const projectFolder = req.query.projectFolder || 'default';
+    const { organizationName, organizationId, projectName, projectId } = req.query;
+
+    if (!organizationName || !organizationId || !projectName || !projectId) {
+      return res.status(400).json({ error: 'organizationName, organizationId, projectName, and projectId are required' });
+    }
+
+    const organizationSlug = slugify(`${organizationName}-${organizationId}`, { lower: true, strict: true });
+    const projectSlug = slugify(`${projectName}-${projectId}`, { lower: true, strict: true });
+
+    const projectFolder = `${organizationSlug}/${projectSlug}`;
+
     console.log('Backend - Project Folder:', projectFolder);
 
     const upload = multer({

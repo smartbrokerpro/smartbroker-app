@@ -11,12 +11,14 @@ import {
   Alert,
   ImageList,
   ImageListItem,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
 import { ChevronLeft } from '@mui/icons-material';
-import slugify from 'slugify';
 import Link from 'next/link';
+import slugify from 'slugify';
 
 const MemoizedAutocomplete = React.memo(Autocomplete);
 
@@ -30,7 +32,15 @@ const CreateProject = () => {
     location: { lat: -33.4489, lng: -70.6693 },
     gallery: [],
     commercialConditions: '',
-    baseImagePath: ''
+    deliveryType: '',
+    downPaymentMethod: '',
+    installments: 0,
+    promiseSignatureType: '',
+    reservationInfo: {
+      text: '',
+      hyperlink: ''
+    },
+    reservationValue: 0
   });
   const [regions, setRegions] = useState([]);
   const [counties, setCounties] = useState([]);
@@ -40,6 +50,7 @@ const CreateProject = () => {
   const [selectedRealEstateCompany, setSelectedRealEstateCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+  const [hyperlinkEnabled, setHyperlinkEnabled] = useState(false);
 
   const fetchInitialData = useCallback(async () => {
     if (!session?.user?.organization?._id) return;
@@ -106,59 +117,70 @@ const CreateProject = () => {
   }, []);
 
   const onDrop = useCallback(async (acceptedFiles) => {
+    if (!project.name || !session?.user?.organization) {
+      setNotification({ open: true, message: 'Error: Información del proyecto u organización no disponible', severity: 'error' });
+      return;
+    }
+
+    const organizationName = slugify(session.user.organization.name, { lower: true, strict: true });
+    const organizationId = session.user.organization._id;
     const projectSlug = slugify(project.name, { lower: true, strict: true });
-    const projectFolder = `${projectSlug}_${Math.floor(Date.now() / 1000)}`;
-  
-    console.log('Frontend - Project Folder:', projectFolder);
-  
-    setProject(prev => ({
-      ...prev,
-      baseImagePath: projectFolder
-    }));
-  
+    
+    // Usamos un identificador temporal (timestamp) si el projectId aún no existe
+    const projectId = project._id || `temp-${Date.now()}`;
+    const projectFolder = `${organizationName}-${organizationId}/${projectSlug}-${projectId}`;
+
     const uploadPromises = acceptedFiles.map(file => {
       return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-  
-        console.log('Frontend - Sending file:', file.name);
-  
-        fetch(`/api/uploadS3?projectFolder=${encodeURIComponent(projectFolder)}`, {
+
+        fetch(`/api/uploadS3?organizationName=${encodeURIComponent(organizationName)}&organizationId=${encodeURIComponent(organizationId)}&projectName=${encodeURIComponent(project.name)}&projectId=${encodeURIComponent(projectId)}`, {
           method: 'POST',
           body: formData,
         })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Upload failed');
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log('Frontend - Received URL:', data.url);
-          resolve(data.url);
-        })
-        .catch(error => {
-          console.error('Frontend - Error uploading:', error);
-          reject(error);
-        });
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Upload failed');
+            }
+            return response.json();
+          })
+          .then(data => {
+            resolve(data.url);
+          })
+          .catch(error => {
+            reject(error);
+          });
       });
     });
-  
+
     try {
       const uploadedUrls = await Promise.all(uploadPromises);
-      console.log('Frontend - All uploaded URLs:', uploadedUrls);
       setProject(prev => ({
         ...prev,
         gallery: [...(prev.gallery || []), ...uploadedUrls],
       }));
       setNotification({ open: true, message: 'Imágenes subidas con éxito', severity: 'success' });
     } catch (error) {
-      console.error('Frontend - Error in onDrop:', error);
       setNotification({ open: true, message: 'Error al subir imágenes', severity: 'error' });
     }
-  }, [project.name]);
+  }, [project, session]);
+
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  const handleHyperlinkToggle = (event) => {
+    setHyperlinkEnabled(event.target.checked);
+    if (!event.target.checked) {
+      setProject(prev => ({
+        ...prev,
+        reservationInfo: {
+          ...prev.reservationInfo,
+          hyperlink: ''
+        },
+      }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -174,7 +196,7 @@ const CreateProject = () => {
 
       const response = await fetch('/api/projects', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'x-organization-id': session.user.organization._id
         },
@@ -184,10 +206,10 @@ const CreateProject = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setNotification({ 
-          open: true, 
-          message: 'Proyecto creado con éxito', 
-          severity: 'success' 
+        setNotification({
+          open: true,
+          message: 'Proyecto creado con éxito',
+          severity: 'success'
         });
         setTimeout(() => {
           router.push('/projects');
@@ -196,11 +218,10 @@ const CreateProject = () => {
         throw new Error(data.error || 'Error al crear el proyecto');
       }
     } catch (error) {
-      console.error('Error creating project:', error);
-      setNotification({ 
-        open: true, 
-        message: `Error al crear el proyecto: ${error.message}`, 
-        severity: 'error' 
+      setNotification({
+        open: true,
+        message: `Error al crear el proyecto: ${error.message}`,
+        severity: 'error'
       });
     }
   };
@@ -216,9 +237,9 @@ const CreateProject = () => {
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', my: 4 }}>
       <Link href="/projects" passHref>
-        <Button 
-          startIcon={<ChevronLeft />} 
-          variant="outlined" 
+        <Button
+          startIcon={<ChevronLeft />}
+          variant="outlined"
           color="primary"
           sx={{ mb: 3 }}
           component="a"
@@ -259,7 +280,6 @@ const CreateProject = () => {
             setProject(prev => ({ ...prev, location: { lat: lat || -33.4489, lng: lng || -70.6693 } }));
           }}
           helperText="Coordenadas precargadas de Santiago de Chile. Modifique si es necesario."
-          required
         />
         <MemoizedAutocomplete
           options={regions}
@@ -293,7 +313,91 @@ const CreateProject = () => {
           value={project.commercialConditions}
           onChange={handleInputChange}
         />
-        
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Tipo de Entrega"
+          name="deliveryType"
+          value={project.deliveryType}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Método de Pago Pie"
+          name="downPaymentMethod"
+          value={project.downPaymentMethod}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Número de Cuotas"
+          name="installments"
+          type="number"
+          value={project.installments ? project.installments : null}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Tipo de Firma de Promesa"
+          name="promiseSignatureType"
+          value={project.promiseSignatureType}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          margin="normal"
+          label="Texto de la Reserva"
+          name="reservationInfo.text"
+          value={project.reservationInfo.text}
+          onChange={(e) => {
+            const newText = e.target.value;
+            setProject(prev => ({
+              ...prev,
+              reservationInfo: {
+                ...prev.reservationInfo,
+                text: newText,
+              },
+            }));
+            if (!newText) setHyperlinkEnabled(false);
+          }}
+        />
+        <FormControlLabel
+          control={<Switch checked={hyperlinkEnabled} onChange={handleHyperlinkToggle} />}
+          label="Habilitar Hipervínculo de la Reserva"
+          disabled={!project.reservationInfo.text}
+        />
+        {hyperlinkEnabled && (
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Hipervínculo de la Reserva"
+            name="reservationInfo.hyperlink"
+            value={project.reservationInfo.hyperlink}
+            onChange={(e) => setProject(prev => ({
+              ...prev,
+              reservationInfo: {
+                ...prev.reservationInfo,
+                hyperlink: e.target.value,
+              },
+            }))}
+          />
+        )}
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Valor de la Reserva"
+          name="reservationValue"
+          type="number"
+          value={project.reservationValue ? project.reservationValue : null}
+          onChange={handleInputChange}
+          helperText="Ingrese el valor de la reserva en unidades monetarias"
+        />
+
         <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
           <input {...getInputProps()} />
           {isDragActive ? (

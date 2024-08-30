@@ -348,7 +348,7 @@ const ProjectsPage = () => {
                       }}
                     >
                       <TableCell>
-                        <Avatar alt={project.name} src={project.gallery[0]} />
+                        <Avatar alt={project.name} src={project.gallery && project.gallery.length > 0 ? project.gallery[0] : fallbackImage} />
                       </TableCell>
                       <TableCell>{project.name}</TableCell>
                       <TableCell>{project.real_estate_company.name}</TableCell>

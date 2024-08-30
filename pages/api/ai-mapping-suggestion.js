@@ -18,7 +18,16 @@ export default async function handler(req, res) {
     Proyecto: ${projectFields.join(', ')}
     Stock: ${stockFields.join(', ')}
     
-    Sugiere un mapeo entre los encabezados de Excel y los campos del modelo. Devuelve la respuesta SOLO como un objeto JSON (sin explicaciones adicionales) donde las claves son los encabezados de Excel y los valores son objetos con las propiedades 'model' (ya sea 'project' o 'stock') y 'field'. Utiliza nombres de campo en minúsculas.`;
+    Instrucción: Sugiere un mapeo entre los encabezados de Excel y los campos del modelo. Devuelve la respuesta únicamente como un objeto JSON (sin explicaciones adicionales), donde:
+
+    Las claves son los encabezados de Excel.
+    Los valores son objetos que contienen las propiedades model (que puede ser project o stock) y field.
+    Utiliza nombres de campo en minúsculas.
+    Asigna cada campo del modelo a un único encabezado de Excel.
+    
+    Importante: No realices asignaciones duplicadas
+    
+    `;
 
     console.log("Prompt generado:", prompt);
 

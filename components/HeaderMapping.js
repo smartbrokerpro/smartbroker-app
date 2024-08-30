@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  List, ListItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardContent, Typography, Box, Chip, CircularProgress, Divider, Alert
+  List, ListItem, ListItemIcon, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Card, CardContent, Typography, Box, Chip, CircularProgress, Modal, Alert
 } from '@mui/material';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import StarIcon from '@mui/icons-material/Star';
+import ErrorIcon from '@mui/icons-material/Error';
 
 const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, file, organizationId }) => {
   const [mapping, setMapping] = useState({});
@@ -14,28 +15,26 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
   const [openSummaryDialog, setOpenSummaryDialog] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [missingCounties, setMissingCounties] = useState([]);
 
   const requiredFields = ['apartment', 'name', 'county_name', 'address', 'typology', 'orientation', 'current_list_price'];
-  
+
   const isFieldRequired = (field) => requiredFields.includes(field);
 
   const isRequiredFieldsMapped = () => {
     return requiredFields.every(field => {
-
       if (field === 'county_name') {
         return Object.values(mapping).some(mappedField => 
           mappedField.field === field && mappedField.model === 'project'
         );
       }
-
       return Object.values(mapping).some(mappedField => 
         mappedField.field === field
       );
     });
   };
-  
 
-  const hiddenInStockFields = ['county_name'];
+  const hiddenInStockFields = ['county_name', 'available', 'real_estate_company_name', 'region_name'];
 
   const internalFields = [
     "_id", "createdAt", "created_at", "updated_at", "updatedAt", "organization_id", 
@@ -69,6 +68,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
     "total_surface": "Superficie Total",
     "current_list_price": "Precio de Lista",
     "down_payment_bonus": "Bono Pie",
+    "downPaymentMethod": "Método de Pago Bono Pie",
     "discount": "Descuento",
     "rent": "Valor Arriendo",
     "county_name": "Comuna",
@@ -76,6 +76,8 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
     "region_name": "Región",
     "available": "Disponibilidad",
     "project_name": "Nombre del Proyecto",
+    "reservationInfo.text": "Información de reserva",
+    "reservationInfo.hyperlink": "Link de reserva"
   };
 
   useEffect(() => {
@@ -117,7 +119,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
         
         suggestionsWithExamples[header] = {
           ...suggestion,
-          modelo: normalizedModel, // Normaliza la clave a inglés
+          modelo: normalizedModel,
           example,
         };
       }
@@ -129,18 +131,14 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
       setLoading(false);
     }
   };
-  
 
   const onDragEnd = (result) => {
     const { source, destination } = result;
-  
     if (!destination) return;
-  
     const draggedHeader = headers[source.index];
     const draggedExample = examples[source.index];
-  
     const newMapping = { ...mapping };
-  
+
     if (destination.droppableId.startsWith('project')) {
       const fieldIndex = parseInt(destination.droppableId.split('-')[1], 10);
       const fieldName = projectFields[fieldIndex];
@@ -162,7 +160,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
       }
       newMapping[draggedHeader] = { model: 'stock', field: fieldName, example: draggedExample };
     }
-  
+
     setMapping(newMapping);
     console.log('Updated mapping:', newMapping);
   };
@@ -188,20 +186,20 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
           index: headers.indexOf(header)
         };
       });
-  
+
       console.log("Mapping enviado al backend:", finalMapping);
-  
+
       const reader = new FileReader();
       reader.onload = async (event) => {
         const fileContent = event.target.result.split(',')[1];
-  
+
         console.log('Sending data to backend:', {
           fileSize: fileContent.length,
           mappingKeys: Object.keys(finalMapping),
           selectedCompany: selectedCompany,
           organizationId: organizationId
         });
-  
+
         const response = await fetch('/api/analyze-mapping', {
           method: 'POST',
           headers: {
@@ -212,22 +210,23 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
             mapping: finalMapping,
             companyId: selectedCompany._id,
             organizationId: organizationId,
-            realEstateCompanyId: selectedCompany._id
+            realEstateCompanyId: selectedCompany._id,
+            realEstateCompanyName: selectedCompany.name
           }),
         });
-  
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Error response from server:', errorText);
           throw new Error(`Error analyzing mapping: ${errorText}`);
         }
-  
+
         const result = await response.json();
         console.log('Analysis result from server:', result);
         setAnalysisResult(result);
         setOpenSummaryDialog(true);
       };
-  
+
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error during analysis:', error);
@@ -242,7 +241,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
       console.error('No execution data available');
       return;
     }
-  
+
     try {
       const response = await fetch('/api/execute-update', {
         method: 'POST',
@@ -252,22 +251,37 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
         body: JSON.stringify({
           ...analysisResult.executionData,
           organizationId: organizationId,
-          realEstateCompanyId: selectedCompany._id
+          realEstateCompanyId: selectedCompany._id,
+          realEstateCompanyName: selectedCompany.name
         })        
       });
-  
+
       if (!response.ok) {
         throw new Error('Failed to execute update');
       }
-  
-      const result = await response.json();
-      console.log('Update execution simulation result:', result);
 
-      // Cerrar el diálogo y mostrar un alert con el resumen
+      const result = await response.json();
+      console.log('Update execution result:', result);
+
+      // Check for missing counties and set the alert message
+      if (result.result.missingCounties && result.result.missingCounties.length > 0) {
+        const missingDetails = result.result.missingCounties.map(
+          (item) => `Comuna: ${item.countyName} en Proyecto: ${item.projectName}`
+        ).join('\n');
+
+        setAlertMessage(`Actualización completada con éxito.\nProyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}.\n\nErrores:\n${missingDetails}`);
+      } else {
+        setAlertMessage(`Actualización completada con éxito.\nProyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}`);
+      }
+
+      // Cerrar el diálogo y mostrar un alert modal con el resumen
       setOpenSummaryDialog(false);
-      setAlertMessage(`Actualización completada con éxito. Proyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}`);
       setShowAlert(true);
-  
+
+      // Limpiar la selección y el mapping
+      setMapping({});
+      setAnalysisResult(null);
+
     } catch (error) {
       console.error('Error executing update:', error);
       setAlertMessage('Error ejecutando la actualización.');
@@ -275,15 +289,8 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
     }
   };
 
-  const handleComplete = () => {
-    const finalMapping = {};
-    Object.keys(mapping).forEach((header) => {
-      finalMapping[header] = {
-        ...mapping[header],
-        index: headers.indexOf(header)
-      };
-    });
-    onMappingComplete(finalMapping);
+  const handleCloseAlert = () => {
+    setShowAlert(false);
   };
 
   if (loading) {
@@ -292,11 +299,6 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
 
   return (
     <>
-      {showAlert && (
-        <Alert severity="success" onClose={() => setShowAlert(false)} sx={{ mt: 2 }}>
-          {alertMessage}
-        </Alert>
-      )}
       <DragDropContext onDragEnd={onDragEnd}>
         <Box display="flex" justifyContent="space-between">
           <Droppable droppableId="headers">
@@ -405,7 +407,6 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                                 sx={{ 
                                   marginBottom: 1,
                                   backgroundColor: '#6AAC4E',
-
                                  }}
                               />
                               {example && (
@@ -493,7 +494,6 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
                   );
                 })}
               </Box>
-
             </Box>
           </Box>
         </Box>
@@ -664,11 +664,29 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
         </DialogActions>
       </Dialog>
 
-
-
+      {/* Alert Modal for Result Summary */}
+      <Modal open={showAlert} onClose={handleCloseAlert}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 400,
+          bgcolor: 'background.paper',
+          border: '2px solid #000',
+          boxShadow: 24,
+          p: 4,
+        }}>
+          <Typography variant="h6" component="h2">
+            {alertMessage}
+          </Typography>
+          <Button onClick={handleCloseAlert} variant="contained" color="primary" sx={{ mt: 2 }}>
+            Cerrar
+          </Button>
+        </Box>
+      </Modal>
     </>
   );
-  
 };
 
 export default HeaderMapping;
