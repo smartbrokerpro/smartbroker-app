@@ -16,6 +16,7 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [missingCounties, setMissingCounties] = useState([]);
+  const [isExecuting, setIsExecuting] = useState(false);
 
   const requiredFields = ['apartment', 'name', 'county_name', 'address', 'typology', 'orientation', 'current_list_price'];
 
@@ -241,7 +242,9 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
       console.error('No execution data available');
       return;
     }
-
+  
+    setIsExecuting(true); // Deshabilitar el botón y mostrar CircularProgress
+  
     try {
       const response = await fetch('/api/execute-update', {
         method: 'POST',
@@ -255,37 +258,36 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
           realEstateCompanyName: selectedCompany.name
         })        
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to execute update');
       }
-
+  
       const result = await response.json();
       console.log('Update execution result:', result);
-
+  
       // Check for missing counties and set the alert message
       if (result.result.missingCounties && result.result.missingCounties.length > 0) {
         const missingDetails = result.result.missingCounties.map(
           (item) => `Comuna: ${item.countyName} en Proyecto: ${item.projectName}`
         ).join('\n');
-
+  
         setAlertMessage(`Actualización completada con éxito.\nProyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}.\n\nErrores:\n${missingDetails}`);
       } else {
         setAlertMessage(`Actualización completada con éxito.\nProyectos creados: ${result.result.projectsCreated}, Unidades creadas: ${result.result.unitsCreated}`);
       }
-
-      // Cerrar el diálogo y mostrar un alert modal con el resumen
-      setOpenSummaryDialog(false);
-      setShowAlert(true);
-
-      // Limpiar la selección y el mapping
+  
+      setOpenSummaryDialog(false); // Cerrar el diálogo de resumen
+      setShowAlert(true); // Mostrar alerta de éxito
+  
       setMapping({});
       setAnalysisResult(null);
-
     } catch (error) {
       console.error('Error executing update:', error);
       setAlertMessage('Error ejecutando la actualización.');
       setShowAlert(true);
+    } finally {
+      setIsExecuting(false); // Rehabilitar el botón y ocultar CircularProgress
     }
   };
 
@@ -658,8 +660,8 @@ const HeaderMapping = ({ headers, examples, onMappingComplete, selectedCompany, 
         </DialogContent>
         <DialogActions sx={{ backgroundColor: '#F5F5F5' }}>
           <Button onClick={() => setOpenSummaryDialog(false)} sx={{ color: '#6AAC4E' }}>Cerrar</Button>
-          <Button onClick={handleExecuteUpdate} color="primary" variant="contained">
-            Ejecutar Actualización
+          <Button onClick={handleExecuteUpdate} color="primary" variant="contained" disabled={isExecuting}>
+            {isExecuting ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Ejecutar Actualización'}
           </Button>
         </DialogActions>
       </Dialog>

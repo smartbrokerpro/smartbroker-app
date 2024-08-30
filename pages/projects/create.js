@@ -191,7 +191,7 @@ const CreateProject = () => {
         real_estate_company_name: selectedRealEstateCompany?.name,
         county_name: selectedCounty?.name,
         region_name: selectedRegion?.region,
-        organizationId: session.user.organization._id,
+        // organizationId: session.user.organization._id,
       };
 
       const response = await fetch('/api/projects', {
