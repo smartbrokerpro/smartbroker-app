@@ -266,11 +266,11 @@ const ProjectsPage = () => {
           tooltipTitle="Crear proyecto"
           onClick={() => router.push('/projects/create')}
         />
-        {/* <SpeedDialAction
+        <SpeedDialAction
           icon={<AddHomeWorkIcon />}
-          tooltipTitle="Carga masiva de proyectos"
-          onClick={() => router.push('/projects/bulk-upload')}
-        /> */}
+          tooltipTitle="Actualización masiva de proyectos"
+          onClick={() => router.push('/projects/mass-update')}
+        />
         <SpeedDialAction
           icon={<DomainAddIcon />}
 
