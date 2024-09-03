@@ -224,6 +224,9 @@ export const updateProject = async (req, res) => {
   const { idProject } = req.query;
   const organizationId = req.headers['x-organization-id'];
 
+  console.log('Updating project:', idProject);
+  console.log('Organization ID:', organizationId);
+
   if (!organizationId) {
     return res.status(400).json({ success: false, error: 'organization_id is required' });
   }
@@ -237,13 +240,10 @@ export const updateProject = async (req, res) => {
     'name',
     'address',
     'county_id',
-    'county_name',
     'country_id',
     'real_estate_company_id',
-    'real_estate_company_name',
     'location',
     'region_id',
-    'region_name',
     'gallery',
     'commercialConditions',
     'deliveryType',
@@ -286,6 +286,8 @@ export const updateProject = async (req, res) => {
     const db = client.db(process.env.MONGODB_DB);
     const projectsCollection = db.collection('projects');
 
+    console.log('Attempting to update project with data:', updateData);
+
     const result = await projectsCollection.findOneAndUpdate(
       { 
         _id: new ObjectId(idProject), 
@@ -295,34 +297,19 @@ export const updateProject = async (req, res) => {
       { returnDocument: 'after' } // Para devolver el documento actualizado
     );
 
-    if (!result.value) {
+    // Si result es null, significa que no se encontró el documento
+    if (!result) {
+      console.log('Project not found or not updated');
       return res.status(404).json({ success: false, message: 'Project not found or not updated' });
     }
 
-    // Actualizar los documentos en la colección 'stock'
-    const stockUpdateData = {
-      county_id: updateData.county_id,
-      county_name: req.body.county_name,
-      real_estate_company_name: req.body.real_estate_company_name,
-      real_estate_company_id: updateData.real_estate_company_id,
-      project_name: req.body.name,
-      project_id: new ObjectId(idProject),
-      region_name: req.body.region_name,
-      region_id: updateData.region_id
-    };
-
-    await db.collection('stock').updateMany(
-      { project_id: new ObjectId(idProject), organization_id: new ObjectId(organizationId) },
-      { $set: stockUpdateData }
-    );
-
-    res.status(200).json({ success: true, data: result.value });
+    console.log('Project updated successfully:', result);
+    res.status(200).json({ success: true, data: result });
   } catch (error) {
-    console.error('Error updating project and stock:', error);
+    console.error('Error updating project:', error);
     res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
   }
 };
-
 
 
 
