@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { Container, Typography, Button, Box, Input, Paper, CircularProgress, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent, List, ListItem, ListItemText, Menu, MenuItem, Chip } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
+import { Container, Typography, Button, Box, Paper, CircularProgress, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent, List, ListItem, ListItemText, Menu, MenuItem, Chip } from '@mui/material';
 
 export default function MassUpdateProjects() {
   const { data: session } = useSession();
@@ -18,26 +19,29 @@ export default function MassUpdateProjects() {
     console.log("Current logs:", logs);
   }, [logs]);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const onDrop = useCallback((acceptedFiles) => {
+    const file = acceptedFiles[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
         const base64String = reader.result.split(',')[1];
         setSelectedFile(base64String);
+        handleAnalyzeFile(base64String);
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const handleAnalyzeFile = async () => {
-    if (!selectedFile) {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  const handleAnalyzeFile = async (fileContent = selectedFile) => {
+    if (!fileContent) {
       setNotification({ open: true, message: 'Please select a file first', severity: 'error' });
       return;
     }
 
     setLoading(true);
-    setLogs([]); // Reset logs before new analysis
+    setLogs([]);
 
     const organizationId = session?.user?.organization?._id;
 
@@ -48,37 +52,37 @@ export default function MassUpdateProjects() {
     }
 
     try {
-        const response = await fetch('/api/projects/analyze-update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ file: selectedFile, organizationId }),
-        });
-  
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Response data:", data);
-          if (data.message === 'No changes detected. All projects are up to date.') {
-            setNotification({ open: true, message: data.message, severity: 'info' });
-          } else {
-            setAnalysisSummary(data);
-            setDbOperations(data.dbOperations);
-            setConfirmDialogOpen(true);
-          }
-          if (data.logs && data.logs.length > 0) {
-            setLogs(data.logs);
-          }
+      const response = await fetch('/api/projects/analyze-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file: fileContent, organizationId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Response data:", data);
+        if (data.message === 'No changes detected. All projects are up to date.') {
+          setNotification({ open: true, message: data.message, severity: 'info' });
         } else {
-          const errorText = await response.text();
-          throw new Error(errorText);
+          setAnalysisSummary(data);
+          setDbOperations(data.dbOperations);
+          setConfirmDialogOpen(true);
         }
-      } catch (error) {
-        console.error("Error during analysis:", error);
-        setNotification({ open: true, message: `Failed to analyze file: ${error.message}`, severity: 'error' });
-      } finally {
-        setLoading(false);
+        if (data.logs && data.logs.length > 0) {
+          setLogs(data.logs);
+        }
+      } else {
+        const errorText = await response.text();
+        throw new Error(errorText);
       }
+    } catch (error) {
+      console.error("Error during analysis:", error);
+      setNotification({ open: true, message: `Failed to analyze file: ${error.message}`, severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMenuOpen = (event) => {
@@ -169,97 +173,97 @@ export default function MassUpdateProjects() {
     const projectsWithoutChanges = totalProjects - (analysisSummary.projectsToCreate.length + analysisSummary.projectsToUpdate.length);
 
     return (
-        <Box>
-            <Typography variant="h6" gutterBottom>Analysis Summary</Typography>
-            <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={4}>
-                <Card sx={{ bgcolor: '#D6993E', color: 'white' }}>
-                <CardContent>
-                    <Typography variant="h6">Projects to Update</Typography>
-                    <Typography variant="h4">{analysisSummary.projectsToUpdate.length}</Typography>
-                </CardContent>
-                </Card>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-                <Card sx={{ bgcolor: '#6AAC4E', color: 'white' }}>
-                <CardContent>
-                    <Typography variant="h6">Projects to Create</Typography>
-                    <Typography variant="h4">{analysisSummary.projectsToCreate.length}</Typography>
-                </CardContent>
-                </Card>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-                <Card>
-                <CardContent>
-                    <Typography variant="h6">Projects Without Changes</Typography>
-                    <Typography variant="h4">{projectsWithoutChanges}</Typography>
-                </CardContent>
-                </Card>
-            </Grid>
-            </Grid>
-
-            <Typography variant="h6" gutterBottom>Detailed Project List</Typography>
-            <Grid container spacing={2}>
-            {analysisSummary.projectsToCreate.map((project, index) => {
-            const [projectId, projectData] = Object.entries(project)[0];
-            return (
-                <Grid item xs={4} key={`create-${projectId}`}>
-                <Card>
-                    <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="h6">{projectData.name}</Typography>
-                        <Chip label="Create" sx={{ bgcolor: '#6AAC4E', color: 'white' }} />
-                    </Box>
-                    <List dense>
-                        {Object.entries(projectData).filter(([key]) => key !== 'name').map(([field, value]) => (
-                        <ListItem key={field}>
-                            <ListItemText primary={`${field}: ${value}`} />
-                        </ListItem>
-                        ))}
-                    </List>
-                    </CardContent>
-                </Card>
-                </Grid>
-            );
-            })}
-            {analysisSummary.projectsToUpdate.map((project, index) => {
-            const [projectId, projectData] = Object.entries(project)[0];
-            return (
-                <Grid item xs={4} key={`update-${projectId}`}>
-                <Card>
-                    <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="h6">{projectData.name}</Typography>
-                        <Chip label="Update" sx={{ bgcolor: '#D6993E', color: 'white' }} />
-                    </Box>
-                    <List dense>
-                        {Object.entries(projectData).filter(([key]) => key !== 'name').map(([field, value]) => (
-                        <ListItem key={field}>
-                            <ListItemText primary={`${field}: ${value}`} />
-                        </ListItem>
-                        ))}
-                    </List>
-                    </CardContent>
-                </Card>
-                </Grid>
-            );
-            })}
-        </Grid>
-            {analysisSummary.errors?.length > 0 && (
-            <Card sx={{ mt: 2 }}>
-                <CardContent>
-                <Typography variant="h6" color="error">Errors: {analysisSummary.errors.length}</Typography>
-                <List dense>
-                    {analysisSummary.errors.map((error, index) => (
-                    <ListItem key={index}>
-                        <ListItemText primary={error} />
-                    </ListItem>
-                    ))}
-                </List>
-                </CardContent>
+      <Box>
+        <Typography variant="h6" gutterBottom>Analysis Summary</Typography>
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={4}>
+            <Card sx={{ bgcolor: '#D6993E', color: 'white' }}>
+              <CardContent>
+                <Typography variant="h6">Projects to Update</Typography>
+                <Typography variant="h4">{analysisSummary.projectsToUpdate.length}</Typography>
+              </CardContent>
             </Card>
-            )}
-        </Box>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Card sx={{ bgcolor: '#6AAC4E', color: 'white' }}>
+              <CardContent>
+                <Typography variant="h6">Projects to Create</Typography>
+                <Typography variant="h4">{analysisSummary.projectsToCreate.length}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">Projects Without Changes</Typography>
+                <Typography variant="h4">{projectsWithoutChanges}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Typography variant="h6" gutterBottom>Detailed Project List</Typography>
+        <Grid container spacing={2}>
+          {analysisSummary.projectsToCreate.map((project, index) => {
+            const [projectId, projectData] = Object.entries(project)[0];
+            return (
+              <Grid item xs={4} key={`create-${projectId}`}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="h6">{projectData.name}</Typography>
+                      <Chip label="Create" sx={{ bgcolor: '#6AAC4E', color: 'white' }} />
+                    </Box>
+                    <List dense>
+                      {Object.entries(projectData).filter(([key]) => key !== 'name').map(([field, value]) => (
+                        <ListItem key={field}>
+                          <ListItemText primary={`${field}: ${value}`} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+          {analysisSummary.projectsToUpdate.map((project, index) => {
+            const [projectId, projectData] = Object.entries(project)[0];
+            return (
+              <Grid item xs={4} key={`update-${projectId}`}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="h6">{projectData.name}</Typography>
+                      <Chip label="Update" sx={{ bgcolor: '#D6993E', color: 'white' }} />
+                    </Box>
+                    <List dense>
+                      {Object.entries(projectData).filter(([key]) => key !== 'name').map(([field, value]) => (
+                        <ListItem key={field}>
+                          <ListItemText primary={`${field}: ${value}`} />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+        {analysisSummary.errors?.length > 0 && (
+          <Card sx={{ mt: 2 }}>
+            <CardContent>
+              <Typography variant="h6" color="error">Errors: {analysisSummary.errors.length}</Typography>
+              <List dense>
+                {analysisSummary.errors.map((error, index) => (
+                  <ListItem key={index}>
+                    <ListItemText primary={error} />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        )}
+      </Box>
     );
   };
 
@@ -282,25 +286,54 @@ export default function MassUpdateProjects() {
   );
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ p: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Mass Update of Projects
       </Typography>
 
-      <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
+      <Grid container spacing={2}>
+        <Grid item xs={3}>
+          <Paper elevation={3} sx={{ padding: 3, marginBottom: 3 }}>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Download Projects
+            </Typography>
             <Button
               variant="contained"
               color="primary"
               fullWidth
               onClick={handleMenuOpen}
             >
-              Download Projects
+              Download
             </Button>
-          </Grid>
+          </Paper>
         </Grid>
-      </Paper>
+
+        <Grid item xs={9}>
+          <Paper elevation={3} sx={{ padding: 3 }}>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Upload and Analyze Projects File
+            </Typography>
+            <Box {...getRootProps()} sx={{
+              border: '2px dashed #cccccc',
+              borderRadius: '4px',
+              padding: '20px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              '&:hover': {
+                borderColor: '#999999'
+              }
+            }}>
+              <input {...getInputProps()} />
+              {
+                isDragActive ?
+                  <p>Drop the Excel file here ...</p> :
+                  <p>Drag 'n' drop an Excel file here, or click to select file</p>
+              }
+            </Box>
+            {loading && <CircularProgress sx={{ mt: 2 }} />}
+          </Paper>
+        </Grid>
+      </Grid>
 
       <Menu
         anchorEl={anchorEl}
@@ -311,28 +344,6 @@ export default function MassUpdateProjects() {
         <MenuItem onClick={() => handleDownload('csv')}>Download as CSV</MenuItem>
         <MenuItem onClick={() => handleDownload('xlsx')}>Download as XLSX</MenuItem>
       </Menu>
-
-      <Paper elevation={3} sx={{ padding: 3 }}>
-        <Typography variant="h6" component="h2" gutterBottom>
-          Upload and Analyze Projects File
-        </Typography>
-        <Box display="flex" flexDirection="column" alignItems="center">
-          <Input
-            type="file"
-            inputProps={{ accept: '.xlsx, .xls, .csv' }}
-            onChange={handleFileChange}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!selectedFile || loading}
-            onClick={handleAnalyzeFile}
-            sx={{ mt: 2 }}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Analyze File'}
-          </Button>
-        </Box>
-      </Paper>
 
       <Button 
         onClick={() => setShowLogs(true)} 
