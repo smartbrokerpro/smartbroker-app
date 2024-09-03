@@ -200,8 +200,11 @@ const EditProject = () => {
         ...project,
         location: project.location ? `${project.location.lat}, ${project.location.lng}` : '',
         real_estate_company_name: selectedRealEstateCompany?.name,
+        real_estate_company_id: selectedRealEstateCompany?._id,
         county_name: selectedCounty?.name,
-        region_name: selectedRegion?.region
+        county_id: selectedCounty?._id,
+        region_name: selectedRegion?.region,
+        region_id: selectedRegion?._id
       };
       const response = await fetch(`/api/projects/${idProject}`, {
         method: 'PUT',
