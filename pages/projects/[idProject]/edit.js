@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -38,8 +38,11 @@ const EditProject = () => {
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
   const [hyperlinkEnabled, setHyperlinkEnabled] = useState(false);
 
+  // Ref to check if data was already fetched
+  const isDataFetched = useRef(false);
+
   const fetchInitialData = useCallback(async () => {
-    if (!idProject || !session?.user?.organization?._id) return;
+    if (!idProject || !session?.user?.organization?._id || isDataFetched.current) return;
 
     try {
       setLoading(true);
@@ -80,6 +83,10 @@ const EditProject = () => {
       if (projectData.data.reservationInfo?.hyperlink) {
         setHyperlinkEnabled(true);
       }
+
+      // Mark as fetched
+      isDataFetched.current = true;
+
     } catch (error) {
       console.error('Error fetching initial data:', error);
       setNotification({ open: true, message: 'Error cargando datos iniciales', severity: 'error' });
@@ -89,6 +96,7 @@ const EditProject = () => {
   }, [idProject, session]);
 
   useEffect(() => {
+    // Fetch data only if it hasn't been fetched yet
     fetchInitialData();
   }, [fetchInitialData]);
 
@@ -139,8 +147,6 @@ const EditProject = () => {
     const projectSlug = slugify(project.name, { lower: true, strict: true });
     const projectId = project._id;
 
-    const projectFolder = `${organizationName}-${organizationId}/${projectSlug}-${projectId}`;
-
     const uploadPromises = acceptedFiles.map(file => {
       return new Promise((resolve, reject) => {
         const formData = new FormData();
@@ -176,7 +182,6 @@ const EditProject = () => {
       setNotification({ open: true, message: 'Error al subir imágenes', severity: 'error' });
     }
   }, [project, session]);
-
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
