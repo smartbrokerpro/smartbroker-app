@@ -109,7 +109,9 @@ export const getProjects = async (req, res) => {
           max_price: 1,
           updatedAt: 1,
           hasStock: 1,
-          unitsCount: 1 // Incluimos el campo unitsCount en el resultado final
+          unitsCount: 1,
+          commercialConditions: 1
+
         }
       },
       {

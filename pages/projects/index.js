@@ -273,7 +273,11 @@ const ProjectsPage = () => {
         />
         <SpeedDialAction
           icon={<DomainAddIcon />}
-
+          tooltipTitle="Editor rápido de proyectos"
+          onClick={() => router.push('/projects/quick-editor')}
+        />
+        <SpeedDialAction
+          icon={<DomainAddIcon />}
           tooltipTitle="Carga masiva de stock"
           onClick={() => router.push('/projects/upload')}
         />
