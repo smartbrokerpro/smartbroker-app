@@ -110,7 +110,7 @@ export const getProjects = async (req, res) => {
           updatedAt: 1,
           hasStock: 1,
           unitsCount: 1,
-          commercialConditions: 1
+          commercialConditions: 1  // Añade esta línea
 
         }
       },
