@@ -429,9 +429,9 @@ const ProjectsPage = () => {
           </ListItemText>
         </MenuItem>
       </Menu>
-      <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
+      {/* <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
-      </Box>
+      </Box> */}
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
