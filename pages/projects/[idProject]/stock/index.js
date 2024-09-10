@@ -184,6 +184,69 @@ export default function StockPage() {
         </Typography>
       </Box>
 
+      {/* Cajas de información */}
+      <Box sx={{ my: 4 }}>
+        <Grid container spacing={2}>
+
+          {project?.deliveryDateDescr && (
+            <InfoBox title="Fecha de Entrega" value={project.deliveryDateDescr} />
+          )}
+
+          {project?.deliveryType && (
+            <InfoBox title="Tipo de Entrega" value={project.deliveryType} />
+          )}
+
+          {project?.downPaymentMethod && (
+            <InfoBox title="Método de Pago" value={project.downPaymentMethod} />
+          )}
+
+          {project?.installments && (
+            <InfoBox title="Cuotas" value={project.installments} />
+          )}
+
+          {project?.promiseSignatureType && (
+            <InfoBox title="Tipo de Firma de Promesa" value={project.promiseSignatureType} />
+          )}
+
+          {project?.reservationValue && (
+            <InfoBox title="Valor Reserva" value={NumberFormatter(project.reservationValue, 'CLP')} />
+          )}
+
+          {(project?.reservationInfo || project?.reservationInfo === '') && (
+            <InfoBox
+              title="Información de Reserva"
+              value={
+                typeof project.reservationInfo === 'object' ? (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    href={project.reservationInfo.hyperlink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ color: 'black', border:'none', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
+                  >
+                    Ir al sitio de pago
+                  </Button>
+                ) : typeof project.reservationInfo === 'string' && project.reservationInfo.startsWith('http') ? (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    href={project.reservationInfo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ color: 'black', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
+                  >
+                    Ir al sitio de pago
+                  </Button>
+                ) : (
+                  project.reservationInfo
+                )
+              }
+            />
+          )}
+        </Grid>
+      </Box>
+
       {/* Condiciones comerciales */}
       <Box sx={{ mb: 2 }}>
         <Button
@@ -374,24 +437,6 @@ export default function StockPage() {
           color="primary"
         />
       </Box>
-
-      {/* Input de Prompt */}
-      {/* <Box
-        sx={{
-          position: 'sticky',
-          bottom: '4px',
-          width: '100%',
-          backgroundColor: 'primary.main',
-          borderRadius: '2rem',
-          padding: '1rem',
-          paddingBottom: '1rem',
-          color: '#fff',
-          outline: '4px solid #EEEEEE',
-          boxShadow: '-1px -1px 36px #eeeeee',
-        }}
-      >
-        <PromptInput modelName="stock" onSuccess={handlePromptSuccess} projectId={idProject} useExternalNotification={true} />
-      </Box> */}
 
       {/* Notificación */}
       <Snackbar
