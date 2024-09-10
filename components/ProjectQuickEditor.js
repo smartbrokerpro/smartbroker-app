@@ -28,7 +28,7 @@ const ProjectQuickEditor = () => {
   const [updatedProjects, setUpdatedProjects] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [savingStates, setSavingStates] = useState({});
-  const [orderBy, setOrderBy] = useState('name');
+  const [orderBy, setOrderBy] = useState('real_estate_company_name');
   const [order, setOrder] = useState('asc');
   const [uploadingStates, setUploadingStates] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +42,8 @@ const ProjectQuickEditor = () => {
       const data = await response.json();
       const projectsWithCommercialConditions = data.data.map(project => ({
         ...project,
-        commercialConditions: project.commercialConditions || ''
+        commercialConditions: project.commercialConditions || '',
+        real_estate_company_name: project.real_estate_company?.name || ''
       }));
       setProjects(projectsWithCommercialConditions);
       setFilteredProjects(sortProjects(projectsWithCommercialConditions, orderBy, order));
@@ -61,7 +62,8 @@ const ProjectQuickEditor = () => {
 
   useEffect(() => {
     const filtered = projects.filter(project => 
-      project.name.toLowerCase().includes(searchTerm.toLowerCase())
+      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.real_estate_company_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredProjects(sortProjects(filtered, orderBy, order));
   }, [searchTerm, projects, orderBy, order]);
@@ -233,7 +235,6 @@ const ProjectQuickEditor = () => {
       <Box 
         position="sticky" 
         top={0} 
-        
         zIndex={1000} 
         py={2}
         mb={2}
@@ -241,7 +242,7 @@ const ProjectQuickEditor = () => {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Buscar proyectos..."
+          placeholder="Buscar proyectos o inmobiliarias..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           sx={{ bgcolor: 'white', borderRadius: '4px' }}
@@ -251,6 +252,15 @@ const ProjectQuickEditor = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'real_estate_company_name'}
+                  direction={orderBy === 'real_estate_company_name' ? order : 'asc'}
+                  onClick={() => handleSort('real_estate_company_name')}
+                >
+                  Inmobiliaria
+                </TableSortLabel>
+              </TableCell>
               <TableCell>
                 <TableSortLabel
                   active={orderBy === 'name'}
@@ -273,6 +283,7 @@ const ProjectQuickEditor = () => {
                   bgcolor: updatedProjects[project._id] ? 'rgba(108, 214, 63, 0.1)' : 'inherit'
                 }}
               >
+                <TableCell>{project.real_estate_company_name}</TableCell>
                 <TableCell>{project.name}</TableCell>
                 <TableCell>
                   <Box display="flex" flexWrap="wrap" alignItems="center">
