@@ -306,7 +306,7 @@ const ProjectQuickEditor = () => {
           <TableHead>
             <TableRow>
                 {columnVisibility.real_estate_company_name && (
-                <TableCell>
+                <TableCell sx={{minWidth:'10%'}}>
                   <TableSortLabel
                     active={orderBy === 'real_estate_company_name'}
                     direction={orderBy === 'real_estate_company_name' ? order : 'asc'}
@@ -316,7 +316,7 @@ const ProjectQuickEditor = () => {
                   </TableSortLabel>
                 </TableCell>
               )}
-              <TableCell>
+              <TableCell sx={{minWidth:'10%'}}>
                 <TableSortLabel
                   active={orderBy === 'name'}
                   direction={orderBy === 'name' ? order : 'asc'}
@@ -326,12 +326,12 @@ const ProjectQuickEditor = () => {
                 </TableSortLabel>
               </TableCell>
               
-              {columnVisibility.gallery && <TableCell>Imágenes</TableCell>}
-              {columnVisibility.commercialConditions && <TableCell>Condiciones Comerciales</TableCell>}
-              {columnVisibility.discount && <TableCell>Descuento</TableCell>}
-              {columnVisibility.down_payment_bonus && <TableCell>Bono Pie</TableCell>}
-              {columnVisibility.installments && <TableCell>Cuotas</TableCell>}
-              <TableCell>Acciones</TableCell>
+              {columnVisibility.gallery && <TableCell sx={{minWidth:'30%'}}>Imágenes</TableCell>}
+              {columnVisibility.commercialConditions && <TableCell sx={{minWidth:'20%'}}>Condiciones Comerciales</TableCell>}
+              {columnVisibility.discount && <TableCell sx={{minWidth:'10%'}}>Descuento</TableCell>}
+              {columnVisibility.down_payment_bonus && <TableCell sx={{minWidth:'10%'}}>Bono Pie</TableCell>}
+              {columnVisibility.installments && <TableCell sx={{minWidth:'10%'}}>Cuotas</TableCell>}
+              <TableCell sx={{maxWidth:'5%'}}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -342,8 +342,8 @@ const ProjectQuickEditor = () => {
                   bgcolor: updatedProjects[project._id] ? 'rgba(108, 214, 63, 0.1)' : 'inherit'
                 }}
               >
+                <TableCell>{project.real_estate_company_name}</TableCell>
                 <TableCell>{project.name}</TableCell>
-                {columnVisibility.real_estate_company_name && <TableCell>{project.real_estate_company_name}</TableCell>}
                 {columnVisibility.gallery && (
                   <TableCell>
                     <Box display="flex" flexWrap="wrap" alignItems="center">

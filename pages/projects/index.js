@@ -45,6 +45,7 @@ import { NumberFormatter } from '@/utils/formatNumber';
 import { useSession } from 'next-auth/react';
 import { AddHome as AddHomeIcon, AddHomeWork as AddHomeWorkIcon } from '@mui/icons-material';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
+import BoltIcon from '@mui/icons-material/Bolt';
 
 const fallbackImage = '/images/fallback.jpg';
 
@@ -272,7 +273,7 @@ const ProjectsPage = () => {
           onClick={() => router.push('/projects/mass-update')}
         />
         <SpeedDialAction
-          icon={<DomainAddIcon />}
+          icon={<BoltIcon />}
           tooltipTitle="Editor rápido de proyectos"
           onClick={() => router.push('/projects/quick-editor')}
         />
