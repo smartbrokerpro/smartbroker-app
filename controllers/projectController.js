@@ -58,7 +58,7 @@ export const getProjects = async (req, res) => {
           min_price: { $min: '$stock_items.current_list_price' },
           max_price: { $max: '$stock_items.current_list_price' },
           hasStock: { $gt: [{ $size: '$stock_items' }, 0] },
-          unitsCount: { $size: '$stock_items' } // Aquí agregamos la cantidad de unidades
+          unitsCount: { $size: '$stock_items' }
         }
       },
       {
@@ -110,21 +110,16 @@ export const getProjects = async (req, res) => {
           updatedAt: 1,
           hasStock: 1,
           unitsCount: 1,
-          commercialConditions: 1  // Añade esta línea
-
+          commercialConditions: 1,
+          discount: 1,
+          down_payment_bonus: 1,
+          installments: 1
         }
       },
       {
         $sort: { updatedAt: -1 }
       }
     ]).toArray();
-
-    // Verifica si unitsCount se agregó correctamente
-    // projects.forEach(project => {
-    //   if (typeof project.unitsCount === 'undefined') {
-    //     project.unitsCount = 0;
-    //   }
-    // });
 
     res.status(200).json({ success: true, data: projects });
   } catch (error) {
@@ -255,7 +250,9 @@ export const updateProject = async (req, res) => {
     'reservationValue',
     'county_name',
     'real_estate_company_name',
-    'region_name'
+    'region_name',
+    'discount',
+    'down_payment_bonus'
   ];
 
   allowedFields.forEach(field => {
@@ -321,7 +318,10 @@ export const updateProject = async (req, res) => {
           real_estate_company_id: updateData.real_estate_company_id,
           project_name: updateData.name,
           region_name: updateData.region_name,
-          region_id: updateData.region_id
+          region_id: updateData.region_id,
+          discount: updateData.discount,
+          down_payment_bonus: updateData.down_payment_bonus,
+          installments: updateData.installments
         }
       }
     );

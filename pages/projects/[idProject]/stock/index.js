@@ -200,9 +200,10 @@ export default function StockPage() {
             <InfoBox title="Método de Pago" value={project.downPaymentMethod} />
           )}
 
-          {project?.installments && (
-            <InfoBox title="Cuotas" value={project.installments} />
+          {project?.installments !== undefined && project?.installments !== null && (
+            <InfoBox title="Cuotas" value={project.installments} hideIfZero={true} />
           )}
+
 
           {project?.promiseSignatureType && (
             <InfoBox title="Tipo de Firma de Promesa" value={project.promiseSignatureType} />
