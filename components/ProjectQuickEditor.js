@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
 import { 
@@ -28,7 +28,6 @@ import SearchIcon from '@mui/icons-material/Search';
 const ProjectQuickEditor = () => {
   const { data: session } = useSession();
   const [projects, setProjects] = useState([]);
-  const [filteredProjects, setFilteredProjects] = useState([]);
   const [updatedProjects, setUpdatedProjects] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [savingStates, setSavingStates] = useState({});
@@ -74,14 +73,13 @@ const ProjectQuickEditor = () => {
         installments: project.installments || 0,
       }));
       setProjects(projectsWithNewFields);
-      setFilteredProjects(sortProjects(projectsWithNewFields, orderBy, order));
     } catch (error) {
       console.error('Error al obtener los proyectos:', error);
       setSnackbarMessage('Error al obtener los proyectos: ' + error.message);
     } finally {
       setIsLoading(false);
     }
-  }, [orderBy, order]);
+  }, []);
 
   useEffect(() => {
     if (session?.user?.organization?._id && isLoading) {
@@ -89,38 +87,31 @@ const ProjectQuickEditor = () => {
     }
   }, [session, fetchProjects, isLoading]);
 
-  useEffect(() => {
-    const filtered = projects.filter(project => 
-      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.real_estate_company_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredProjects(sortProjects(filtered, orderBy, order));
-    setPage(1);
-  }, [searchTerm, projects, orderBy, order]);
+  const filteredAndSortedProjects = useMemo(() => {
+    return projects
+      .filter(project => 
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.real_estate_company_name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        if (a[orderBy] < b[orderBy]) return order === 'asc' ? -1 : 1;
+        if (a[orderBy] > b[orderBy]) return order === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [projects, searchTerm, orderBy, order]);
+
+  const paginatedProjects = useMemo(() => {
+    return filteredAndSortedProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  }, [filteredAndSortedProjects, page, rowsPerPage]);
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsMinimized(true);
-      } else {
-        setIsMinimized(false);
-      }
+      setIsMinimized(window.scrollY > 50);
     };
 
     window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const sortProjects = (projectsToSort, sortBy, sortOrder) => {
-    return [...projectsToSort].sort((a, b) => {
-      if (a[sortBy] < b[sortBy]) return sortOrder === 'asc' ? -1 : 1;
-      if (a[sortBy] > b[sortBy]) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-  };
 
   const onDrop = async (acceptedFiles, projectId) => {
     const file = acceptedFiles[0];
@@ -142,13 +133,9 @@ const ProjectQuickEditor = () => {
       
       const updatedGallery = [...(project.gallery || []), data.url];
       
-      const updatedProjects = projects.map(p => 
-        p._id === projectId 
-          ? { ...p, gallery: updatedGallery }
-          : p
+      setProjects(prevProjects => 
+        prevProjects.map(p => p._id === projectId ? { ...p, gallery: updatedGallery } : p)
       );
-      setProjects(updatedProjects);
-      setFilteredProjects(sortProjects(updatedProjects, orderBy, order));
 
       setUpdatedProjects(prev => ({
         ...prev,
@@ -166,29 +153,27 @@ const ProjectQuickEditor = () => {
   };
 
   const deleteImage = (projectId, imageUrl) => {
-    const updatedProjects = projects.map(project => 
-      project._id === projectId 
-        ? { ...project, gallery: project.gallery.filter(url => url !== imageUrl) }
-        : project
+    setProjects(prevProjects => 
+      prevProjects.map(project => 
+        project._id === projectId 
+          ? { ...project, gallery: project.gallery.filter(url => url !== imageUrl) }
+          : project
+      )
     );
-    setProjects(updatedProjects);
-    setFilteredProjects(sortProjects(updatedProjects, orderBy, order));
 
     setUpdatedProjects(prev => ({
       ...prev,
       [projectId]: {
         ...prev[projectId],
-        gallery: updatedProjects.find(p => p._id === projectId).gallery
+        gallery: prev[projectId]?.gallery.filter(url => url !== imageUrl) || []
       }
     }));
   };
 
   const handleInputChange = (projectId, field, value) => {
-    const updatedProjects = projects.map(p => 
-      p._id === projectId ? { ...p, [field]: value } : p
+    setProjects(prevProjects => 
+      prevProjects.map(p => p._id === projectId ? { ...p, [field]: value } : p)
     );
-    setProjects(updatedProjects);
-    setFilteredProjects(sortProjects(updatedProjects, orderBy, order));
 
     setUpdatedProjects(prev => ({
       ...prev,
@@ -243,13 +228,9 @@ const ProjectQuickEditor = () => {
         return rest;
       });
 
-      const updatedProjects = projects.map(p => 
-        p._id === projectId 
-          ? { ...p, ...updatedProject.data }
-          : p
+      setProjects(prevProjects => 
+        prevProjects.map(p => p._id === projectId ? { ...p, ...updatedProject.data } : p)
       );
-      setProjects(updatedProjects);
-      setFilteredProjects(sortProjects(updatedProjects, orderBy, order));
 
       setSavingStates(prev => ({ ...prev, [projectId]: 'saved' }));
       setTimeout(() => {
@@ -290,8 +271,6 @@ const ProjectQuickEditor = () => {
     );
   }
 
-  const paginatedProjects = filteredProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-
   return (
     <Box sx={{ width: '100%' }}>
       <Box 
@@ -301,7 +280,7 @@ const ProjectQuickEditor = () => {
           zIndex: 1100,
           backgroundColor: 'white',
           transition: 'all 0.3s ease-in-out',
-          padding: isMinimized ? '10px 20px' : '10px 20px',
+          padding: isMinimized ? '10px 20px' : '20px',
           boxShadow: '0px 2px 4px -1px rgba(0,0,0,0.2)',
         }}
       >
@@ -389,196 +368,196 @@ const ProjectQuickEditor = () => {
             <TableBody>
               {paginatedProjects.map((project) => (
                 <TableRow
-                key={project._id}
-                sx={{
-                  bgcolor: updatedProjects[project._id] ? 'rgba(108, 214, 63, 0.1)' : 'inherit',
-                }}
-              >
-                {columnVisibility.real_estate_company_name && (
-                  <TableCell>{project.real_estate_company_name}</TableCell>
-                )}
-                <TableCell>{project.name}</TableCell>
-                {columnVisibility.gallery && (
-                  <TableCell>
-                    <Box display="flex" flexWrap="wrap" alignItems="center">
-                      {project.gallery &&
-                      project.gallery.map((imageUrl, index) => (
-                        <Box key={imageUrl} position="relative" m={1}>
-                          <img
-                            src={imageUrl}
-                            alt={`Proyecto ${index}`}
-                            style={{ width: 80, height: 80, objectFit: 'cover' }}
-                          />
-                          <IconButton
-                            size="small"
-                            onClick={() => deleteImage(project._id, imageUrl)}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              right: 0,
-                              backgroundColor: 'white',
-                            }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      ))}
-                      <ImageDropzone
-                        onDrop={(files) => onDrop(files, project._id)}
-                        isUploading={uploadingStates[project._id]}
+                  key={project._id}
+                  sx={{
+                    bgcolor: updatedProjects[project._id] ? 'rgba(108, 214, 63, 0.1)' : 'inherit',
+                  }}
+                >
+                  {columnVisibility.real_estate_company_name && (
+                    <TableCell>{project.real_estate_company_name}</TableCell>
+                  )}
+                  <TableCell>{project.name}</TableCell>
+                  {columnVisibility.gallery && (
+                    <TableCell>
+                      <Box display="flex" flexWrap="wrap" alignItems="center">
+                        {project.gallery &&
+                        project.gallery.map((imageUrl, index) => (
+                          <Box key={imageUrl} position="relative" m={1}>
+                            <img
+                              src={imageUrl}
+                              alt={`Proyecto ${index}`}
+                              style={{ width: 80, height: 80, objectFit: 'cover' }}
+                            />
+                            <IconButton
+                              size="small"
+                              onClick={() => deleteImage(project._id, imageUrl)}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                backgroundColor: 'white',
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        ))}
+                        <ImageDropzone
+                          onDrop={(files) => onDrop(files, project._id)}
+                          isUploading={uploadingStates[project._id]}
+                        />
+                      </Box>
+                    </TableCell>
+                  )}
+                  {columnVisibility.commercialConditions && (
+                    <TableCell>
+                      <TextareaAutosize
+                        minRows={3}
+                        style={{ width: '100%', padding: '6px', fontSize: '14px' }}
+                        value={project.commercialConditions}
+                        onChange={(e) =>
+                          handleInputChange(
+                            project._id,
+                            'commercialConditions',
+                            e.target.value
+                          )
+                        }
                       />
-                    </Box>
-                  </TableCell>
-                )}
-                {columnVisibility.commercialConditions && (
+                    </TableCell>
+                  )}
+                  {columnVisibility.discount && (
+                    <TableCell align="center">
+                      <TextField
+                        type="number"
+                        sx={{
+                          width: '70px',
+                          '& input': { textAlign: 'center' },
+                        }}
+                        InputProps={{
+                          inputProps: { min: 0, max: 99, step: 0.1 },
+                        }}
+                        value={project.discount}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'discount', parseFloat(e.target.value))
+                        }
+                      />
+                    </TableCell>
+                  )}
+                  {columnVisibility.down_payment_bonus && (
+                    <TableCell align="center">
+                      <TextField
+                        type="number"
+                        sx={{
+                          width: '70px',
+                          '& input': { textAlign: 'center' },
+                        }}
+                        InputProps={{
+                          inputProps: { min: 0, max: 99, step: 0.01 },
+                        }}
+                        value={project.down_payment_bonus}
+                        onChange={(e) =>
+                          handleInputChange(
+                            project._id,
+                            'down_payment_bonus',
+                            parseFloat(e.target.value)
+                          )
+                        }
+                      />
+                    </TableCell>
+                  )}
+                  {columnVisibility.installments && (
+                    <TableCell align="center">
+                      <TextField
+                        type="number"
+                        sx={{
+                          width: '70px',
+                          '& input': { textAlign: 'center' },
+                        }}
+                        InputProps={{
+                          inputProps: { min: 0, max: 99, step: 1 },
+                        }}
+                        value={project.installments}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'installments', parseInt(e.target.value, 10))
+                        }
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
-                    <TextareaAutosize
-                      minRows={3}
-                      style={{ width: '100%', padding: '6px', fontSize: '14px' }}
-                      value={project.commercialConditions}
-                      onChange={(e) =>
-                        handleInputChange(
-                          project._id,
-                          'commercialConditions',
-                          e.target.value
-                        )
-                      }
-                    />
-                  </TableCell>
-                )}
-                {columnVisibility.discount && (
-                  <TableCell align="center">
-                    <TextField
-                      type="number"
+                    <Button
+                      variant="contained"
+                      onClick={() => handleSave(project._id)}
+                      disabled={!updatedProjects[project._id] || savingStates[project._id] === 'saving'}
                       sx={{
-                        width: '70px',
-                        '& input': { textAlign: 'center' },
+                        bgcolor: updatedProjects[project._id] ? '#6CD63F' : 'rgba(0, 0, 0, 0.12)',
+                        color: updatedProjects[project._id] ? 'white' : 'rgba(0, 0, 0, 0.26)',
+                        '&:hover': {
+                          bgcolor: updatedProjects[project._id] ? '#5BC22F' : 'rgba(0, 0, 0, 0.12)',
+                        },
+                        '&.Mui-disabled': {
+                          bgcolor: 'rgba(0, 0, 0, 0.12)',
+                          color: 'rgba(0, 0, 0, 0.26)',
+                        },
                       }}
-                      InputProps={{
-                        inputProps: { min: 0, max: 99, step: 0.1 },
-                      }}
-                      value={project.discount}
-                      onChange={(e) =>
-                        handleInputChange(project._id, 'discount', parseFloat(e.target.value))
-                      }
-                    />
+                    >
+                      {savingStates[project._id] === 'saving' ? (
+                        <CircularProgress size={24} color="inherit" />
+                      ) : savingStates[project._id] === 'saved' ? (
+                        <CheckCircleIcon />
+                      ) : (
+                        'GUARDAR'
+                      )}
+                    </Button>
                   </TableCell>
-                )}
-                {columnVisibility.down_payment_bonus && (
-                  <TableCell align="center">
-                    <TextField
-                      type="number"
-                      sx={{
-                        width: '70px',
-                        '& input': { textAlign: 'center' },
-                      }}
-                      InputProps={{
-                        inputProps: { min: 0, max: 99, step: 0.01 },
-                      }}
-                      value={project.down_payment_bonus}
-                      onChange={(e) =>
-                        handleInputChange(
-                          project._id,
-                          'down_payment_bonus',
-                          parseFloat(e.target.value)
-                        )
-                      }
-                    />
-                  </TableCell>
-                )}
-                {columnVisibility.installments && (
-                  <TableCell align="center">
-                    <TextField
-                      type="number"
-                      sx={{
-                        width: '70px',
-                        '& input': { textAlign: 'center' },
-                      }}
-                      InputProps={{
-                        inputProps: { min: 0, max: 99, step: 1 },
-                      }}
-                      value={project.installments}
-                      onChange={(e) =>
-                        handleInputChange(project._id, 'installments', parseInt(e.target.value, 10))
-                      }
-                    />
-                  </TableCell>
-                )}
-                <TableCell>
-                  <Button
-                    variant="contained"
-                    onClick={() => handleSave(project._id)}
-                    disabled={!updatedProjects[project._id] || savingStates[project._id] === 'saving'}
-                    sx={{
-                      bgcolor: updatedProjects[project._id] ? '#6CD63F' : 'rgba(0, 0, 0, 0.12)',
-                      color: updatedProjects[project._id] ? 'white' : 'rgba(0, 0, 0, 0.26)',
-                      '&:hover': {
-                        bgcolor: updatedProjects[project._id] ? '#5BC22F' : 'rgba(0, 0, 0, 0.12)',
-                      },
-                      '&.Mui-disabled': {
-                        bgcolor: 'rgba(0, 0, 0, 0.12)',
-                        color: 'rgba(0, 0, 0, 0.26)',
-                      },
-                    }}
-                  >
-                    {savingStates[project._id] === 'saving' ? (
-                      <CircularProgress size={24} color="inherit" />
-                    ) : savingStates[project._id] === 'saved' ? (
-                      <CheckCircleIcon />
-                    ) : (
-                      'GUARDAR'
-                    )}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
+      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+        <Pagination
+          count={Math.ceil(filteredAndSortedProjects.length / rowsPerPage)}
+          page={page}
+          onChange={handleChangePage}
+          color="primary"
+        />
       </Box>
-    </Paper>
-    <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-      <Pagination
-        count={Math.ceil(filteredProjects.length / rowsPerPage)}
-        page={page}
-        onChange={handleChangePage}
-        color="primary"
+      <Snackbar
+        open={!!snackbarMessage}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarMessage('')}
+        message={snackbarMessage}
       />
     </Box>
-    <Snackbar
-      open={!!snackbarMessage}
-      autoHideDuration={6000}
-      onClose={() => setSnackbarMessage('')}
-      message={snackbarMessage}
-    />
-  </Box>
-);
+  );
 };
 
 const ImageDropzone = ({ onDrop, isUploading }) => {
-const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
-return (
-  <Box
-    {...getRootProps()}
-    width={100}
-    height={100}
-    display="flex"
-    alignItems="center"
-    justifyContent="center"
-    bgcolor={isDragActive ? 'grey.100' : 'white'}
-    position="relative"
-    sx={{borderStyle:'dashed', borderColor:'grey.300', borderWidth:1}}
-  >
-    <input {...getInputProps()} />
-    {isUploading ? (
-      <CircularProgress size={24} />
-    ) : (
-      <Typography variant="body2" color="textSecondary" textAlign="center">
-        {isDragActive ? 'Suelta aquí' : 'Arrastra imágenes'}
-      </Typography>
-    )}
-  </Box>
-);
+  return (
+    <Box
+      {...getRootProps()}
+      width={100}
+      height={100}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      bgcolor={isDragActive ? 'grey.100' : 'white'}
+      position="relative"
+      sx={{borderStyle:'dashed', borderColor:'grey.300', borderWidth:1}}
+    >
+      <input {...getInputProps()} />
+      {isUploading ? (
+        <CircularProgress size={24} />
+      ) : (
+        <Typography variant="body2" color="textSecondary" textAlign="center">
+          {isDragActive ? 'Suelta aquí' : 'Arrastra imágenes'}
+        </Typography>
+      )}
+    </Box>
+  );
 };
 
 export default ProjectQuickEditor;
