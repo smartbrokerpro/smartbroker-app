@@ -234,7 +234,7 @@ export default function StockPage() {
             <InfoBox
               title="Información de Reserva"
               value={
-                typeof project.reservationInfo === 'object' ? (
+                project.reservationInfo.hyperlink !== '' ? (
                   <Button
                     variant="outlined"
                     color="primary"
@@ -245,19 +245,8 @@ export default function StockPage() {
                   >
                     Ir al sitio de pago
                   </Button>
-                ) : typeof project.reservationInfo === 'string' && project.reservationInfo.startsWith('http') ? (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    href={project.reservationInfo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ color: 'black', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
-                  >
-                    Ir al sitio de pago
-                  </Button>
-                ) : (
-                  project.reservationInfo
+                ) :  (
+                  project.reservationInfo.text
                 )
               }
             />
