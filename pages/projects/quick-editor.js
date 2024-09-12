@@ -14,7 +14,7 @@ export default function ProjectEditorPage() {
   }
 
   return (
-    <Box sx={{p:4}}>
+    <Box sx={{p:0}}>
       <ProjectQuickEditor />
     </Box>
   )
