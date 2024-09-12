@@ -40,9 +40,13 @@ const ProjectQuickEditor = () => {
     real_estate_company_name: true,
     gallery: true,
     commercialConditions: true,
+    downpayment: true,
     discount: true,
     down_payment_bonus: true,
     installments: true,
+    deliveryDateDescr: true,
+    deliveryType: true,
+    
   });
   const [page, setPage] = useState(1);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -54,7 +58,10 @@ const ProjectQuickEditor = () => {
     commercialConditions: 'Condiciones Comerciales',
     discount: 'Descuento',
     down_payment_bonus: 'Bono Pie',
-    installments: 'Cuotas'
+    installments: 'Cuotas',
+    deliveryDateDescr: 'Fecha de Entrega',
+    downpayment: 'Pie',
+    deliveryType: 'Tipo de Entrega',
   };
 
   const fetchProjects = useCallback(async (organizationId) => {
@@ -71,6 +78,8 @@ const ProjectQuickEditor = () => {
         discount: project.discount || 0,
         down_payment_bonus: project.down_payment_bonus || 0,
         installments: project.installments || 0,
+        deliveryDateDescr: project.deliveryDateDescr || '',
+        downpayment: project.downpayment || 0,
       }));
       setProjects(projectsWithNewFields);
     } catch (error) {
@@ -203,7 +212,9 @@ const ProjectQuickEditor = () => {
       commercialConditions: project.commercialConditions,
       discount: project.discount,
       down_payment_bonus: project.down_payment_bonus,
-      installments: project.installments
+      installments: project.installments,
+      deliveryDateDescr: project.deliveryDateDescr,
+      downpayment: project.downpayment,
     };
 
     try {
@@ -353,20 +364,30 @@ const ProjectQuickEditor = () => {
                 {columnVisibility.commercialConditions && (
                   <TableCell>Condiciones Comerciales</TableCell>
                 )}
+                {columnVisibility.downpayment && (
+                  <TableCell align="center">Pie %</TableCell>
+                )}
                 {columnVisibility.discount && (
                   <TableCell align="center">Descuento %</TableCell>
                 )}
+
                 {columnVisibility.down_payment_bonus && (
                   <TableCell align="center">Bono Pie %</TableCell>
                 )}
                 {columnVisibility.installments && (
                   <TableCell align="center">Cuotas</TableCell>
                 )}
+                {columnVisibility.deliveryDateDescr && (
+                  <TableCell>Fecha de Entrega</TableCell>
+                )}
+                {columnVisibility.deliveryType && (
+                    <TableCell>Tipo de Entrega</TableCell>
+                )}
                 <TableCell>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedProjects.map((project) => (
+            {paginatedProjects.map((project) => (
                 <TableRow
                   key={project._id}
                   sx={{
@@ -421,6 +442,25 @@ const ProjectQuickEditor = () => {
                             'commercialConditions',
                             e.target.value
                           )
+                        }
+                      />
+                    </TableCell>
+                  )}
+                  
+                  {columnVisibility.downpayment && (
+                    <TableCell align="center">
+                      <TextField
+                        type="number"
+                        sx={{
+                          width: '70px',
+                          '& input': { textAlign: 'center' },
+                        }}
+                        InputProps={{
+                          inputProps: { min: 0, max: 99, step: 0.1 },
+                        }}
+                        value={project.downpayment}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'downpayment', parseFloat(e.target.value))
                         }
                       />
                     </TableCell>
@@ -483,6 +523,28 @@ const ProjectQuickEditor = () => {
                       />
                     </TableCell>
                   )}
+                  {columnVisibility.deliveryDateDescr && (
+                    <TableCell>
+                      <TextField
+                        sx={{ width: '100%' }}
+                        value={project.deliveryDateDescr}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'deliveryDateDescr', e.target.value)
+                        }
+                      />
+                    </TableCell>
+                  )}
+                  {columnVisibility.deliveryType && (
+                    <TableCell>
+                        <TextField
+                        sx={{ width: '100%' }}
+                        value={project.deliveryType || ''}
+                        onChange={(e) =>
+                            handleInputChange(project._id, 'deliveryType', e.target.value)
+                        }
+                        />
+                    </TableCell>
+                    )}
                   <TableCell>
                     <Button
                       variant="contained"

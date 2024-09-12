@@ -113,7 +113,10 @@ export const getProjects = async (req, res) => {
           commercialConditions: 1,
           discount: 1,
           down_payment_bonus: 1,
-          installments: 1
+          installments: 1,
+          deliveryDateDescr: 1,
+          downpayment: 1,
+          deliveryType: 1
         }
       },
       {
@@ -252,7 +255,11 @@ export const updateProject = async (req, res) => {
     'real_estate_company_name',
     'region_name',
     'discount',
-    'down_payment_bonus'
+    'down_payment_bonus',
+    'deliveryDateDescr',
+    'downpayment',
+    'deliveryType'
+    
   ];
 
   allowedFields.forEach(field => {
@@ -321,7 +328,10 @@ export const updateProject = async (req, res) => {
           region_id: updateData.region_id,
           discount: updateData.discount,
           down_payment_bonus: updateData.down_payment_bonus,
-          installments: updateData.installments
+          installments: updateData.installments,
+          deliveryDateDescr: updateData.deliveryDateDescr,
+          bonus: updateData.bonus,
+          deliveryType: updateData.deliveryType
         }
       }
     );
