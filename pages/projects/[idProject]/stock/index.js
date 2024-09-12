@@ -179,14 +179,24 @@ export default function StockPage() {
           alt={project?.name}
           sx={{ width: 60, height: 60, mr: 2 }}
         />
+        
         <Typography variant="h4" component="h1" color="primary">
-          Stock del Proyecto <b>{project?.name}</b>
+          Stock del Proyecto <b>{project?.name}</b> - <small>{project?.realEstateCompanyName}</small>
         </Typography>
+        
       </Box>
 
       {/* Cajas de información */}
       <Box sx={{ my: 4 }}>
         <Grid container spacing={2}>
+
+          {project?.downpayment && (
+            <InfoBox title="Pie" value={project.downpayment + "%"} />
+          )}
+
+          {/* {project?.discount && (
+            <InfoBox title="Descuento" value={String(project.discount) + "%"} />
+          )} */}
 
           {project?.deliveryDateDescr && (
             <InfoBox title="Fecha de Entrega" value={project.deliveryDateDescr} />
@@ -206,11 +216,18 @@ export default function StockPage() {
 
 
           {project?.promiseSignatureType && (
-            <InfoBox title="Tipo de Firma de Promesa" value={project.promiseSignatureType} />
+            <InfoBox title="Tipo de Firma de Promesa" value={project?.promiseSignatureType} />
+          )}
+          
+          {project?.reservationValue && !isNaN(Number(project?.reservationValue)) && (
+            <InfoBox 
+              title="Valor Reserva" 
+              value={NumberFormatter({ value: parseFloat(project?.reservationValue), unit: '$' })} 
+            />
           )}
 
-          {project?.reservationValue && (
-            <InfoBox title="Valor Reserva" value={NumberFormatter(project.reservationValue, 'CLP')} />
+          {project?.county_name && (
+            <InfoBox title="Comuna" value={project?.county_name} />
           )}
 
           {(project?.reservationInfo || project?.reservationInfo === '') && (
@@ -371,7 +388,7 @@ export default function StockPage() {
                   <TableCell align="center">
                     <NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} />
                   </TableCell>
-                  <TableCell align="center">{item.total_surface} m²</TableCell>
+                  <TableCell align="center">{item.total_surface && Number(item.total_surface).toFixed(2)} m²</TableCell>
                   <TableCell>
                     <IconButton onClick={() => toggleRowExpand(item.apartment)}>
                       {expandedRow === item.apartment ? <ExpandLess /> : <ExpandMore />}
