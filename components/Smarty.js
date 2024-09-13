@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Checkbox,
   FormControlLabel,
   TextField,
@@ -95,6 +96,8 @@ const Smarty = () => {
   const [page, setPage] = useState(1);
   const [creditsUsed, setCreditsUsed] = useState(0);
   const [error, setError] = useState(null);
+  const [orderBy, setOrderBy] = useState('');
+  const [order, setOrder] = useState('asc');
   const rowsPerPage = 12;
   const { data: session } = useSession();
   const showNotification = useNotification();
@@ -102,7 +105,6 @@ const Smarty = () => {
   const organizationId = session?.user?.organization?._id;
   const userId = session?.user?.id;
 
-  console.log(organizationId, userId)
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -229,8 +231,6 @@ const Smarty = () => {
     setSelectedUnit(null);
   };
 
-  const memoizedResponse = useMemo(() => response, [response]);
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -241,6 +241,28 @@ const Smarty = () => {
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
+
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!response || !response.result || !response.result.rows) return [];
+    
+    const comparator = (a, b) => {
+      if (b[orderBy] < a[orderBy]) {
+        return order === 'asc' ? 1 : -1;
+      }
+      if (b[orderBy] > a[orderBy]) {
+        return order === 'asc' ? -1 : 1;
+      }
+      return 0;
+    };
+
+    return [...response.result.rows].sort(comparator);
+  }, [response, order, orderBy]);
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', overflow: 'hidden', position: 'relative' }}>
@@ -284,7 +306,7 @@ const Smarty = () => {
         {isClient && loading && (
           <LottieLoader message="Buscando..." />
         )}
-        {memoizedResponse && memoizedResponse.result && memoizedResponse.result.rows.length > 0 && (
+        {response && response.result && response.result.rows.length > 0 && (
           <>
             {showTypewriter && (
               <Typography
@@ -309,12 +331,20 @@ const Smarty = () => {
                 <TableHead>
                   <TableRow>
                     {response.result.columns.map((column) => (
-                      <TableCell key={column.id} sx={{ px: 2, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center', fontSize: '0.75rem' }}>{column.label}</TableCell>
+                      <TableCell key={column.id} sx={{ px: 2, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center', fontSize: '0.75rem' }}>
+                        <TableSortLabel
+                          active={orderBy === column.id}
+                          direction={orderBy === column.id ? order : 'asc'}
+                          onClick={() => handleRequestSort(column.id)}
+                        >
+                          {column.label}
+                        </TableSortLabel>
+                      </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {response.result.rows.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((row, index) => (
+                  {sortedRows.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((row, index) => (
                     <TableRow key={index}>
                       {response.result.columns.map((column) => (
                         <TableCell key={column.id} sx={{ px: 1, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center', fontSize: '0.75rem' }}>
@@ -333,14 +363,13 @@ const Smarty = () => {
               </Table>
               <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                 <Pagination
-                  count={Math.ceil(response.result.rows.length / rowsPerPage)}
+                  count={Math.ceil(sortedRows.length / rowsPerPage)}
                   page={page}
                   onChange={handleChangePage}
                   color="primary"
                 />
               </Box>
             </TableContainer>
-            
           </>
         )}
         {(!loading && (!response || !response.result || response.result.rows.length === 0) && !showExamples) && (

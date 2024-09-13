@@ -330,7 +330,7 @@ export const updateProject = async (req, res) => {
           down_payment_bonus: updateData.down_payment_bonus,
           installments: updateData.installments,
           deliveryDateDescr: updateData.deliveryDateDescr,
-          bonus: updateData.bonus,
+          downpayment: updateData.downpayment,
           deliveryType: updateData.deliveryType
         }
       }

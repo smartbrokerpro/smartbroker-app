@@ -57,7 +57,7 @@ export default function StockPage() {
   const containerRef = useRef(null);
   const [openQuotationDialog, setOpenQuotationDialog] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState(null);
-  const [openCommercialConditions, setOpenCommercialConditions] = useState(true); // El botón empieza abierto
+  const [openCommercialConditions, setOpenCommercialConditions] = useState(true);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -156,7 +156,7 @@ export default function StockPage() {
         <Grid container spacing={2}>
 
           {project?.downpayment && (
-            <InfoBox title="Bono" value={project.downpayment + "%"} />
+            <InfoBox title="Pie" value={project.downpayment + "%"} />
           )}
 
           {project?.deliveryDateDescr && (
@@ -297,7 +297,7 @@ export default function StockPage() {
                   direction={orderBy === 'downpayment' ? order : 'asc'} // Cambio realizado aquí
                   onClick={() => handleRequestSort('downpayment')} // Cambio realizado aquí
                 >
-                  Bono {/* Cambio realizado aquí */}
+                  Pie {/* Cambio realizado aquí */}
                 </TableSortLabel>
               </TableCell>
               <TableCell align="center">
@@ -338,7 +338,9 @@ export default function StockPage() {
                     <NumberFormatter value={item.current_list_price} unit={'UF'} prependUnit={false} decimals={0} appendUnit={true} />
                   </TableCell>
                   <TableCell align="center">
-                    <NumberFormatter value={item.downpayment} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} /> {/* Cambio realizado aquí */}
+                    {item.downpayment !== undefined && item.downpayment !== null ? (
+                      <NumberFormatter value={parseFloat(item.downpayment) || 0} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} />
+                    ) : '0%'}
                   </TableCell>
                   <TableCell align="center">
                     <NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} />

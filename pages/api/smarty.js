@@ -1,4 +1,4 @@
-import { handleSearchRequest } from '../../controllers/smartyController';
+import { handleSearchRequest } from '@/controllers/smartyController';
 import verifyCredits from '@/middlewares/verifyCredits';
 
 export default async function handler(req, res) {

@@ -85,7 +85,6 @@ export const handleSearchRequest = async (req, res) => {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
 
-    // Obtener la organización y verificar los créditos
     const organizationsCollection = db.collection('organizations');
     const organization = await organizationsCollection.findOne({ _id: new ObjectId(organizationId) });
     if (!organization) {
@@ -100,38 +99,34 @@ export const handleSearchRequest = async (req, res) => {
     await addMessageToThread(threadId, query);
     const projectRun = await runAssistantOnThread(threadId, 'ProjectAssistant');
     const projectRunId = await waitForCompletion(threadId);
-    const initialResponse = await getAssistantResponse(threadId);
+
+    let initialResponse = await getAssistantResponse(threadId);
+    console.log('Respuesta inicial recibida:', initialResponse);
+
+    let mongoCommand = JSON.parse(initialResponse);
+    console.log('Comando MongoDB parseado:', mongoCommand);
+
+    const { filter, limit } = mongoCommand;
 
     totalTokensUsed += await getTokenUsage(threadId, projectRunId);
 
-    if (!initialResponse) {
-      throw new Error('No se recibió respuesta del asistente.');
-    }
-
-    console.log('Respuesta inicial recibida:', initialResponse);
-    const mongoCommand = JSON.parse(initialResponse.replace(/\n/g, '').replace(/\\+/g, '\\\\+'));
-    const { action, command, limit } = mongoCommand;
-
-    if (!action || !command) {
-      return res.status(400).json({ error: 'Formato de respuesta incompleto desde el asistente', initialResponse });
-    }
-
     const stockCollection = db.collection('stock');
     const projectsCollection = db.collection('projects');
-    let results;
 
-    const queryOptions = limit ? { limit } : {};
+    console.log('Ejecutando consulta MongoDB:', JSON.stringify(filter));
+    console.log('Límite aplicado:', limit);
 
-    switch (action) {
-      case 'filter':
-        console.log('Ejecutando comando MongoDB:', command);
-        results = await stockCollection.find(command, queryOptions).toArray();
-        break;
-      default:
-        return res.status(400).json({ error: 'Acción no válida' });
-    }
+    // Primero, ejecutamos sin límite para ver cuántos resultados hay en total
+    const totalResults = await stockCollection.countDocuments(filter);
+    console.log('Total de resultados sin límite:', totalResults);
 
+    // Ahora ejecutamos la consulta con límite
+    const results = await stockCollection.find(filter).limit(limit || 0).toArray();
     console.log('Resultados obtenidos:', results.length);
+
+    if (results.length === 0) {
+      console.log('No se encontraron resultados. Filtro utilizado:', JSON.stringify(filter));
+    }
 
     const projectIds = results.map(result => new ObjectId(result.project_id));
     const projectDetails = await projectsCollection.find({
@@ -149,6 +144,7 @@ export const handleSearchRequest = async (req, res) => {
         orientation: result.orientation,
         county_name: result.county_name,
         down_payment_bonus: result.down_payment_bonus,
+        downpayment: result.downpayment,
         discount: result.discount,
         real_estate_company_name: result.real_estate_company_name,
         link: `http://localhost:3000/projects/${result.project_id}/stock/${result._id}`
@@ -187,6 +183,11 @@ export const handleSearchRequest = async (req, res) => {
       bonuses: summarizedResults.reduce((acc, result) => {
         const bonusValue = Math.floor(result.down_payment_bonus);
         acc[bonusValue] = (acc[bonusValue] || 0) + 1;
+        return acc;
+      }, {}),
+      downpayments: summarizedResults.reduce((acc, result) => {
+        const downpaymentValue = Math.floor(result.downpayment);
+        acc[downpaymentValue] = (acc[downpaymentValue] || 0) + 1;
         return acc;
       }, {}),
       discounts: summarizedResults.reduce((acc, result) => {
@@ -228,6 +229,7 @@ export const handleSearchRequest = async (req, res) => {
       { id: 'orientation', label: 'Orientación' },
       { id: 'total_surface', label: 'Superficie Total' },
       { id: 'county_name', label: 'Comuna' },
+      { id: 'downpayment', label: 'Pie' },
       { id: 'down_payment_bonus', label: 'Bono' },
       { id: 'discount', label: 'Descuento' },
       { id: 'link', label: '', format: value => `<button onClick="window.location.href='${value}'">Ver Unidad</button>` }
@@ -266,6 +268,6 @@ export const handleSearchRequest = async (req, res) => {
     res.status(200).json(finalResponse);
   } catch (error) {
     console.error('Error en la generación de respuesta:', error);
-    res.status(500).json({ error: 'Error en la generación de respuesta', details: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
