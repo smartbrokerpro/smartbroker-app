@@ -111,7 +111,7 @@ export default function StockPage() {
     item.typology.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.orientation.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.current_list_price.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.down_payment_bonus.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.downpayment.toString().toLowerCase().includes(searchQuery.toLowerCase()) || // Cambio realizado aquí
     item.discount.toString().toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -128,41 +128,6 @@ export default function StockPage() {
   
   function toggleRowExpand(stockId) {
     setExpandedRow(expandedRow === stockId ? null : stockId);
-  }
-
-  function handlePromptSuccess(result, updatedId) {
-    let updatedIds = [];
-    if (result.data && result.data.updatedIds) {
-      updatedIds = result.data.updatedIds;
-    } else if (updatedId) {
-      updatedIds = [updatedId];
-    }
-
-    if (updatedIds.length > 0) {
-      setUpdatedStockIds(updatedIds);
-      fetchStock();
-      setTimeout(() => {
-        setUpdatedStockIds([]);
-      }, 3000);
-
-      setNotification({
-        open: true,
-        message: `Operación exitosa: ${updatedIds.length} elemento(s) modificado(s)`,
-        severity: 'success'
-      });
-    } else {
-      fetchStock();
-      setNotification({
-        open: true,
-        message: 'Operación completada, pero no se modificaron elementos',
-        severity: 'info'
-      });
-    }
-
-    if (result.credits) {
-      const creditUpdateEvent = new CustomEvent('creditUpdate', { detail: { credits: result.credits } });
-      window.dispatchEvent(creditUpdateEvent);
-    }
   }
 
   return (
@@ -191,12 +156,8 @@ export default function StockPage() {
         <Grid container spacing={2}>
 
           {project?.downpayment && (
-            <InfoBox title="Pie" value={project.downpayment + "%"} />
+            <InfoBox title="Bono" value={project.downpayment + "%"} />
           )}
-
-          {/* {project?.discount && (
-            <InfoBox title="Descuento" value={String(project.discount) + "%"} />
-          )} */}
 
           {project?.deliveryDateDescr && (
             <InfoBox title="Fecha de Entrega" value={project.deliveryDateDescr} />
@@ -213,7 +174,6 @@ export default function StockPage() {
           {project?.installments !== undefined && project?.installments !== null && (
             <InfoBox title="Cuotas" value={project.installments} hideIfZero={true} />
           )}
-
 
           {project?.promiseSignatureType && (
             <InfoBox title="Tipo de Firma de Promesa" value={project?.promiseSignatureType} />
@@ -234,23 +194,29 @@ export default function StockPage() {
             <InfoBox
               title="Información de Reserva"
               value={
-                project.reservationInfo.hyperlink !== '' ? (
+                project.reservationInfo.hyperlink && project.reservationInfo.hyperlink.trim() !== '' ? (
                   <Button
                     variant="outlined"
                     color="primary"
-                    href={project.reservationInfo.hyperlink}
+                    href={
+                      (() => {
+                        const cleanLink = project.reservationInfo.hyperlink.replace(/['"]/g, '').trim(); // Elimina comillas dobles y simples
+                        return cleanLink.startsWith('http') ? cleanLink : `https://${cleanLink}`;
+                      })()
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
-                    sx={{ color: 'black', border:'none', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
+                    sx={{ color: 'black', border: 'none', borderBottom: '1px solid #9AD850', borderRadius: '0rem' }}
                   >
                     Ir al sitio de pago
                   </Button>
-                ) :  (
+                ) : (
                   project.reservationInfo.text
                 )
               }
             />
           )}
+
         </Grid>
       </Box>
 
@@ -327,11 +293,11 @@ export default function StockPage() {
               </TableCell>
               <TableCell align="center">
                 <TableSortLabel
-                  active={orderBy === 'down_payment_bonus'}
-                  direction={orderBy === 'down_payment_bonus' ? order : 'asc'}
-                  onClick={() => handleRequestSort('down_payment_bonus')}
+                  active={orderBy === 'downpayment'} // Cambio realizado aquí
+                  direction={orderBy === 'downpayment' ? order : 'asc'} // Cambio realizado aquí
+                  onClick={() => handleRequestSort('downpayment')} // Cambio realizado aquí
                 >
-                  Bono Pie
+                  Bono {/* Cambio realizado aquí */}
                 </TableSortLabel>
               </TableCell>
               <TableCell align="center">
@@ -372,7 +338,7 @@ export default function StockPage() {
                     <NumberFormatter value={item.current_list_price} unit={'UF'} prependUnit={false} decimals={0} appendUnit={true} />
                   </TableCell>
                   <TableCell align="center">
-                    <NumberFormatter value={item.down_payment_bonus} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} />
+                    <NumberFormatter value={item.downpayment} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} /> {/* Cambio realizado aquí */}
                   </TableCell>
                   <TableCell align="center">
                     <NumberFormatter value={item.discount} unit={'%'} prependUnit={false} decimals={0} appendUnit={true} />
