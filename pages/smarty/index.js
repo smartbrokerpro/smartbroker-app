@@ -4,7 +4,7 @@ import { Container } from '@mui/material';
 
 export default function Home() {
   return (
-    <Container>
+    <Container maxWidth={false} disableGutters>
       <Smarty />
     </Container>
   );

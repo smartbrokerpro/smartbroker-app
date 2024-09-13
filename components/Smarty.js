@@ -265,10 +265,10 @@ const Smarty = () => {
   }, [response, order, orderBy]);
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', overflow: 'hidden', position: 'relative' }}>
+    <Box sx={{ width: '100%', p: 4, display: 'flex', flexDirection: 'column', height: '96vh', overflow: 'hidden', position: 'relative' }}>
       <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
         {showExamples && (
-          <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column' }}>
+          <Box sx={{ p: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column' }}>
             <Image src={smartyImage} alt="Smarty" width={100} height={100} />
             <Typography variant="h6" sx={{ m: 3 }} gutterBottom>Puedes pedirme cosas como: </Typography>
             <Box sx={{
@@ -310,40 +310,67 @@ const Smarty = () => {
           <>
             
             <TableContainer component={Paper} elevation={4} sx={{ fontSize: '.85rem' }}>
-              <Table size="small" aria-label="simple table" sx={{ '& tbody tr:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
-                <TableHead>
-                  <TableRow>
+            <Table size="small" aria-label="simple table" sx={{ '& tbody tr:nth-of-type(odd)': { backgroundColor: 'rgba(108,	214,	63, 0.2)' } }}>
+              <TableHead>
+                <TableRow>
+                  {response.result.columns.map((column) => (
+                    <TableCell 
+                      key={column.id} 
+                      sx={{ 
+                        px: 0,
+                        py: 1,
+                        textAlign: column.id === 'project_name' ? 'left' : 'center',
+                        fontSize: '0.75rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: column.id === 'project_name' ? '150px' : '100px', 
+                        backgroundColor:'rgba(108,	214,	63, 0.75)',
+                        color:'rgba(0,0,0,0.4)',
+                        fontWeight:'700'
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === column.id}
+                        direction={orderBy === column.id ? order : 'asc'}
+                        onClick={() => handleRequestSort(column.id)}
+                      >
+                        {column.label}
+                      </TableSortLabel>
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedRows.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((row, index) => (
+                  <TableRow key={index}>
                     {response.result.columns.map((column) => (
-                      <TableCell key={column.id} sx={{ px: 2, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center', fontSize: '0.75rem' }}>
-                        <TableSortLabel
-                          active={orderBy === column.id}
-                          direction={orderBy === column.id ? order : 'asc'}
-                          onClick={() => handleRequestSort(column.id)}
-                        >
-                          {column.label}
-                        </TableSortLabel>
+                      <TableCell 
+                        key={column.id} 
+                        sx={{ 
+                          px: 0, // Reducido de 2 a 1
+                          py: 1,
+                          textAlign: column.id === 'project_name' ? 'left' : 'center',
+                          fontSize: '0.75rem',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: column.id === 'project_name' ? '150px' : '100px', // Ajusta estos valores según tus necesidades
+                        }}
+                      >
+                        {column.id === 'link' ? (
+                          <Button variant="contained" color="primary" onClick={() => handleOpenModal(row)} size="small">
+                            Info
+                          </Button>
+                        ) : (
+                          row[column.id]
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {sortedRows.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((row, index) => (
-                    <TableRow key={index}>
-                      {response.result.columns.map((column) => (
-                        <TableCell key={column.id} sx={{ px: 1, py: 0.5, textAlign: column.id === 'project_name' ? 'left' : 'center', fontSize: '0.75rem' }}>
-                          {column.id === 'link' ? (
-                            <Button variant="contained" color="primary" onClick={() => handleOpenModal(row)} size="small">
-                              Info
-                            </Button>
-                          ) : (
-                            row[column.id]
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                ))}
+              </TableBody>
+            </Table>
               <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                 <Pagination
                   count={Math.ceil(sortedRows.length / rowsPerPage)}
