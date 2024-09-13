@@ -306,26 +306,9 @@ const Smarty = () => {
         {isClient && loading && (
           <LottieLoader message="Buscando..." />
         )}
-        {response && response.result && response.result.rows.length > 0 && (
+        {!loading &&response && response.result && response.result.rows.length > 0 && (
           <>
-            {showTypewriter && (
-              <Typography
-                variant="body1"
-                sx={{ mb: 2, fontSize: '0.85rem', backgroundColor: response.analysis ? '#A4E844' : '#0E0F10', color: response.analysis ? 'black' : 'white', borderRadius: '5px', padding: '10px' }}
-                component="div"
-              >
-                <Typewriter
-                  key={key}
-                  options={{
-                    strings: [response.analysis ? `<b>Análisis</b>: ${analysisText}` : `<b>Resumen:</b> ${analysisText}`],
-                    autoStart: true, 
-                    loop: false,
-                    delay: 1,
-                    deleteSpeed: Infinity, 
-                  }}
-                />
-              </Typography>
-            )}
+            
             <TableContainer component={Paper} elevation={4} sx={{ fontSize: '.85rem' }}>
               <Table size="small" aria-label="simple table" sx={{ '& tbody tr:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
                 <TableHead>
@@ -370,6 +353,24 @@ const Smarty = () => {
                 />
               </Box>
             </TableContainer>
+            {showTypewriter && (
+              <Typography
+                variant="body1"
+                sx={{ mt: 2, fontSize: '0.85rem', backgroundColor: response.analysis ? '#A4E844' : '#0E0F10', color: response.analysis ? 'black' : 'white', borderRadius: '5px', padding: '10px' }}
+                component="div"
+              >
+                <Typewriter
+                  key={key}
+                  options={{
+                    strings: [response.analysis ? `<b>Análisis</b>: ${analysisText}` : `<b>Resumen:</b> ${analysisText}`],
+                    autoStart: true, 
+                    loop: false,
+                    delay: 1,
+                    deleteSpeed: Infinity, 
+                  }}
+                />
+              </Typography>
+            )}
           </>
         )}
         {(!loading && (!response || !response.result || response.result.rows.length === 0) && !showExamples) && (

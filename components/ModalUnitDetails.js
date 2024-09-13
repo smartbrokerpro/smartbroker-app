@@ -52,16 +52,17 @@ const ModalUnitDetails = ({ open, onClose, unit }) => {
                 </TableBody>
               </Table>
             </TableContainer>
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection:'column' }}>
               <Image src="/images/plan.jpg" alt="Placeholder" width={300} height={300} />
+              <small><i>Imagen referencial</i></small>
             </Box>
           </Box>
         )}
       </DialogContent>
       <DialogActions>
-        <Button variant="contained" color="primary" onClick={onClose}>
+        {/* <Button variant="contained" color="primary" onClick={onClose}>
           Cotizar
-        </Button>
+        </Button> */}
       </DialogActions>
     </Dialog>
   );
