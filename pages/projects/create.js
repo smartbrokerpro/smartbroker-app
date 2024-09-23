@@ -40,7 +40,10 @@ const CreateProject = () => {
       text: '',
       hyperlink: ''
     },
-    reservationValue: 0
+    reservationValue: 0,
+    downpayment: 0,
+    down_payment_bonus: 0,
+    deliveryDateDescr: ''
   });
   const [regions, setRegions] = useState([]);
   const [counties, setCounties] = useState([]);
@@ -166,7 +169,6 @@ const CreateProject = () => {
     }
   }, [project, session]);
 
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   const handleHyperlinkToggle = (event) => {
@@ -191,10 +193,10 @@ const CreateProject = () => {
         real_estate_company_name: selectedRealEstateCompany?.name,
         county_name: selectedCounty?.name,
         region_name: selectedRegion?.region,
-        // organizationId: session.user.organization._id,
+        organizationId: session.user.organization._id,
       };
 
-      const response = await fetch('/api/projects', {
+      const response = await fetch('/api/projects/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -335,7 +337,7 @@ const CreateProject = () => {
           label="Número de Cuotas"
           name="installments"
           type="number"
-          value={project.installments ? project.installments : null}
+          value={project.installments}
           onChange={handleInputChange}
         />
         <TextField
@@ -348,95 +350,121 @@ const CreateProject = () => {
         />
         <TextField
           fullWidth
-          multiline
-          rows={4}
           margin="normal"
-          label="Texto de la Reserva"
-          name="reservationInfo.text"
-          value={project.reservationInfo.text}
-          onChange={(e) => {
-            const newText = e.target.value;
-            setProject(prev => ({
-              ...prev,
-              reservationInfo: {
-                ...prev.reservationInfo,
-                text: newText,
-              },
-            }));
-            if (!newText) setHyperlinkEnabled(false);
-          }}
+          label="Pie"
+          name="downpayment"
+          type="number"
+          value={project.downpayment}
+          onChange={handleInputChange}
         />
-        <FormControlLabel
-          control={<Switch checked={hyperlinkEnabled} onChange={handleHyperlinkToggle} />}
-          label="Habilitar Hipervínculo de la Reserva"
-          disabled={!project.reservationInfo.text}
-        />
-        {hyperlinkEnabled && (
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Hipervínculo de la Reserva"
-            name="reservationInfo.hyperlink"
-            value={project.reservationInfo.hyperlink}
-            onChange={(e) => setProject(prev => ({
-              ...prev,
-              reservationInfo: {
-                ...prev.reservationInfo,
-                hyperlink: e.target.value,
-              },
-            }))}
-          />
-        )}
         <TextField
           fullWidth
           margin="normal"
-          label="Valor de la Reserva"
-          name="reservationValue"
+          label="Bono del Pie"
+          name="down_payment_bonus"
           type="number"
-          value={project.reservationValue ? project.reservationValue : null}
-          onChange={handleInputChange}
-          helperText="Ingrese el valor de la reserva en unidades monetarias"
-        />
+          value={project.down_payment_bonus}
+          onChange={handleInputChange}/>
 
-        <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
-          <input {...getInputProps()} />
-          {isDragActive ? (
-            <p>Suelta las imágenes aquí...</p>
-          ) : (
-            <p>Arrastra y suelta imágenes aquí, o haz clic para seleccionar archivos</p>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Descripción de Fecha de Entrega"
+            name="deliveryDateDescr"
+            value={project.deliveryDateDescr}
+            onChange={handleInputChange}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            margin="normal"
+            label="Texto de la Reserva"
+            name="reservationInfo.text"
+            value={project.reservationInfo.text}
+            onChange={(e) => {
+              const newText = e.target.value;
+              setProject(prev => ({
+                ...prev,
+                reservationInfo: {
+                  ...prev.reservationInfo,
+                  text: newText,
+                },
+              }));
+              if (!newText) setHyperlinkEnabled(false);
+            }}
+          />
+          <FormControlLabel
+            control={<Switch checked={hyperlinkEnabled} onChange={handleHyperlinkToggle} />}
+            label="Habilitar Hipervínculo de la Reserva"
+            disabled={!project.reservationInfo.text}
+          />
+          {hyperlinkEnabled && (
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Hipervínculo de la Reserva"
+              name="reservationInfo.hyperlink"
+              value={project.reservationInfo.hyperlink}
+              onChange={(e) => setProject(prev => ({
+                ...prev,
+                reservationInfo: {
+                  ...prev.reservationInfo,
+                  hyperlink: e.target.value,
+                },
+              }))}
+            />
           )}
-        </Box>
-
-        {project.gallery && project.gallery.length > 0 && (
-          <ImageList sx={{ width: '100%', height: 450 }} cols={3} rowHeight={164}>
-            {project.gallery.map((item, index) => (
-              <ImageListItem key={index}>
-                <img
-                  src={`${item}?w=164&h=164&fit=crop&auto=format`}
-                  srcSet={`${item}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
-                  alt={`Gallery image ${index + 1}`}
-                  loading="lazy"
-                />
-              </ImageListItem>
-            ))}
-          </ImageList>
-        )}
-
-        <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
-          Crear Proyecto
-        </Button>
-      </form>
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-      >
-        <Alert onClose={() => setNotification(prev => ({ ...prev, open: false }))} severity={notification.severity}>
-          {notification.message}
-        </Alert>
-      </Snackbar>
-    </Box>
-  );
-};
-
-export default CreateProject;
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Valor de la Reserva"
+            name="reservationValue"
+            type="number"
+            value={project.reservationValue}
+            onChange={handleInputChange}
+            helperText="Ingrese el valor de la reserva en unidades monetarias"
+          />
+  
+          <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
+            <input {...getInputProps()} />
+            {isDragActive ? (
+              <p>Suelta las imágenes aquí...</p>
+            ) : (
+              <p>Arrastra y suelta imágenes aquí, o haz clic para seleccionar archivos</p>
+            )}
+          </Box>
+  
+          {project.gallery && project.gallery.length > 0 && (
+            <ImageList sx={{ width: '100%', height: 250, py:2 }} cols={3} rowHeight={164}>
+              {project.gallery.map((item, index) => (
+                <ImageListItem key={index}>
+                  <img
+                    src={`${item}?w=164&h=164&fit=crop&auto=format`}
+                    srcSet={`${item}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
+                    alt={`Gallery image ${index + 1}`}
+                    loading="lazy"
+                  />
+                </ImageListItem>
+              ))}
+            </ImageList>
+          )}
+  
+          <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+            Crear Proyecto
+          </Button>
+        </form>
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={6000}
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        >
+          <Alert onClose={() => setNotification(prev => ({ ...prev, open: false }))} severity={notification.severity}>
+            {notification.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    );
+  };
+  
+  export default CreateProject;

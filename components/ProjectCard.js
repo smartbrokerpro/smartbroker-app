@@ -12,7 +12,13 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  CircularProgress
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -22,12 +28,16 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { NumberFormatter } from '@/utils/formatNumber';
 import HolidayVillageOutlinedIcon from '@mui/icons-material/HolidayVillageOutlined';
+import { useSession } from 'next-auth/react';
 
-const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage }, ref) => {
+const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage, fetchProjects }, ref) => {
+  const { data: session } = useSession(); 
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
   const [tooltipText, setTooltipText] = useState('Click para copiar');
   const [icon, setIcon] = useState(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false); // Estado para manejar la eliminación
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -41,8 +51,35 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
     router.push(`/projects/${project?._id}/edit`);
   };
 
-  const handleDelete = () => {
-    console.log('Eliminar proyecto:', project?._id);
+  const handleDelete = async () => {
+    const organizationId = session?.user?.organization?._id; 
+    if (!organizationId) {
+      console.error('Organization ID is missing');
+      return;
+    }
+
+    setIsDeleting(true); // Cambiamos el estado para mostrar el progreso de eliminación
+    try {
+      const response = await fetch(`/api/projects/delete/${project?._id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-organization-id': organizationId,
+        },
+      });
+
+      if (response.ok) {
+        console.log('Proyecto eliminado:', project?._id);
+        fetchProjects(); // Hacemos el refetch de proyectos después de la eliminación
+        setOpenDeleteDialog(false); // Cerramos el diálogo
+      } else {
+        const errorData = await response.json();
+        console.error('Error eliminando el proyecto:', errorData);
+      }
+    } catch (error) {
+      console.error('Error en la solicitud:', error);
+    } finally {
+      setIsDeleting(false); // Terminamos el estado de eliminación
+    }
   };
 
   const handleCopy = (text) => {
@@ -86,6 +123,16 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           variant="contained"
           sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem',right: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '1rem 0 0 1rem' }}
         />
+        {project?.deliveryType && 
+        <Chip
+          label={<Box display="flex" alignItems="center">
+            {project?.deliveryType || ''}
+          </Box>}
+          color="primary"
+          variant="contained"
+          sx={{ textAlign: 'left', mt: 1, mr:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem', left: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '0 1rem 1rem 0' }}
+        />
+          }
         <IconButton
           aria-label="more"
           aria-controls="long-menu"
@@ -125,7 +172,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
               Editar
             </ListItemText>
           </MenuItem>
-          <MenuItem onClick={handleDelete}>
+          <MenuItem onClick={() => setOpenDeleteDialog(true)}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" />
             </ListItemIcon>
@@ -137,7 +184,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
       </CardMedia>
       <CardContent>
         {/* Nombre */}
-        <Box sx={{ mb: 1 }}>
+        <Box sx={{ mb: 0 }}>
           <Tooltip
             title={
               <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -151,7 +198,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
             <Typography
               variant="h6"
               component="h2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight:'1.4rem' }}
               onClick={() => handleCopy(project?.name)}
             >
               {project?.name}
@@ -182,7 +229,7 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           >
             <Typography
               variant="body2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis' }}
               onClick={() => handleCopy(project?.address)}
             >
               {project?.address}{project?.county.name && `, ${project?.county.name}.`}
@@ -226,6 +273,27 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           </Button>
         </Box>
       </CardContent>
+
+      {/* Diálogo de confirmación de eliminación */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Estás seguro de que deseas eliminar el proyecto {project?.name}? Esta acción borrará también el stock asociado al proyecto y no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
+            Cancelar
+          </Button>
+          <Button onClick={handleDelete} color="error" disabled={isDeleting}>
+            {isDeleting ? <CircularProgress size={24} /> : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 });

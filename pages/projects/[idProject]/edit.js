@@ -49,7 +49,7 @@ const EditProject = () => {
       const [regionsData, companiesData, projectData] = await Promise.all([
         fetch('/api/regions').then(res => res.json()),
         fetch('/api/real_estate_companies').then(res => res.json()),
-        fetch(`/api/projects/${idProject}`, {
+        fetch(`/api/projects/single/${idProject}`, {
           headers: {
             'Content-Type': 'application/json',
             'x-organization-id': session.user.organization._id
@@ -96,7 +96,6 @@ const EditProject = () => {
   }, [idProject, session]);
 
   useEffect(() => {
-    // Fetch data only if it hasn't been fetched yet
     fetchInitialData();
   }, [fetchInitialData]);
 
@@ -123,17 +122,17 @@ const EditProject = () => {
     } else {
       setCounties([]);
     }
-    setProject(prev => ({ ...prev, region_id: value?._id, county_id: null }));
+    setProject(prev => ({ ...prev, region_id: value?._id, region_name: value?.region, county_id: null, county_name: null }));
   }, []);
 
   const handleCountyChange = useCallback((event, value) => {
     setSelectedCounty(value);
-    setProject(prev => ({ ...prev, county_id: value?._id }));
+    setProject(prev => ({ ...prev, county_id: value?._id, county_name: value?.name }));
   }, []);
 
   const handleRealEstateCompanyChange = useCallback((event, value) => {
     setSelectedRealEstateCompany(value);
-    setProject(prev => ({ ...prev, real_estate_company_id: value?._id }));
+    setProject(prev => ({ ...prev, real_estate_company_id: value?._id, real_estate_company_name: value?.name }));
   }, []);
 
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -211,7 +210,7 @@ const EditProject = () => {
         region_name: selectedRegion?.region,
         region_id: selectedRegion?._id
       };
-      const response = await fetch(`/api/projects/${idProject}`, {
+      const response = await fetch(`/api/projects/edit/${idProject}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -262,6 +261,7 @@ const EditProject = () => {
           name="name"
           value={project?.name || ''}
           onChange={handleInputChange}
+          required
         />
         <TextField
           fullWidth
@@ -270,13 +270,14 @@ const EditProject = () => {
           name="address"
           value={project?.address || ''}
           onChange={handleInputChange}
+          required
         />
         <TextField
           fullWidth
           margin="normal"
           label="Ubicación (lat, lng)"
           name="location"
-          value={project?.location ? `${project.location.lat}, ${project.location.lng}` : '-33.4630988, -70.5593344'}
+          value={project?.location ? `${project.location.lat}, ${project.location.lng}` : ''}
           onChange={(e) => {
             const [lat, lng] = e.target.value.split(',').map(coord => parseFloat(coord.trim()));
             setProject(prev => ({ ...prev, location: { lat, lng } }));
@@ -289,21 +290,21 @@ const EditProject = () => {
           value={selectedRegion}
           onChange={handleRegionChange}
           isOptionEqualToValue={(option, value) => option?._id === value?._id}
-          renderInput={(params) => <TextField {...params} label="Región" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Región" margin="normal" required />}
         />
         <MemoizedAutocomplete
           options={counties}
           getOptionLabel={(option) => option.name}
           value={selectedCounty}
           onChange={handleCountyChange}
-          renderInput={(params) => <TextField {...params} label="Comuna" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Comuna" margin="normal" required />}
         />
         <MemoizedAutocomplete
           options={realEstateCompanies}
           getOptionLabel={(option) => option.name}
           value={selectedRealEstateCompany}
           onChange={handleRealEstateCompanyChange}
-          renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" />}
+          renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" required />}
         />
         <TextField
           fullWidth
@@ -334,6 +335,24 @@ const EditProject = () => {
         <TextField
           fullWidth
           margin="normal"
+          label="Pie"
+          name="downpayment"
+          type="number"
+          value={project?.downpayment || ''}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Bono Pie"
+          name="down_payment_bonus"
+          type="number"
+          value={project?.down_payment_bonus || ''}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
           label="Número de Cuotas"
           name="installments"
           type="number"
@@ -346,6 +365,14 @@ const EditProject = () => {
           label="Tipo de Firma de Promesa"
           name="promiseSignatureType"
           value={project?.promiseSignatureType || ''}
+          onChange={handleInputChange}
+        />
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Descripción de Fecha de Entrega"
+          name="deliveryDateDescr"
+          value={project?.deliveryDateDescr || ''}
           onChange={handleInputChange}
         />
         <TextField
@@ -396,7 +423,8 @@ const EditProject = () => {
           value={project?.reservationValue || ''}
           onChange={handleInputChange}
           helperText="Ingrese el valor de la reserva en unidades monetarias"
-/>
+        />
+
         <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', p: 2, mt: 2, textAlign: 'center' }}>
           <input {...getInputProps()} />
           {isDragActive ? (
@@ -407,7 +435,7 @@ const EditProject = () => {
         </Box>
 
         {project?.gallery && project.gallery.length > 0 && (
-          <ImageList sx={{ width: '100%', height: 450 }} cols={3} rowHeight={164}>
+          <ImageList sx={{ width: '100%', height: 250, py:2 }} cols={3} rowHeight={164}>
             {project.gallery.map((item, index) => (
               <ImageListItem key={index}>
                 <img

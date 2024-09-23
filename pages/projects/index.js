@@ -30,6 +30,11 @@ import {
   SpeedDial,
   SpeedDialIcon,
   SpeedDialAction,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import PromptInput from '@/components/PromptInput';
 import { TableRows, GridView, MoreVert } from '@mui/icons-material';
@@ -72,7 +77,11 @@ const ProjectsPage = () => {
   const showNotification = useNotification();
   const projectRefs = useRef({});
   const containerRef = useRef(null);
-
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false); 
+  
+  // Función para confirmar eliminación
+  
   useEffect(() => {
     if (status === 'authenticated') {
       console.log('Usuario autenticado, fetching proyectos...');
@@ -99,7 +108,7 @@ const ProjectsPage = () => {
   const fetchProjects = useCallback(async () => {
     console.log('Fetching proyectos para la organización:', session.user.organization._id);
     setIsRefetching(true);
-    const response = await fetch(`/api/projects?organizationId=${session.user.organization._id}`);
+    const response = await fetch(`/api/projects/all?organizationId=${session.user.organization._id}`);
     const data = await response.json();
     if (data.success) {
       setProjects(data.data);
@@ -201,6 +210,41 @@ const ProjectsPage = () => {
     setSearchQuery(e.target.value);
   };
 
+  // Función para confirmar eliminación
+  const confirmDelete = async () => {
+    const organizationId = session?.user?.organization?._id;
+    if (!organizationId) {
+      console.error('Organization ID is missing');
+      return;
+    }
+
+    setIsDeleting(true); 
+    try {
+      const response = await fetch(`/api/projects/delete/${selectedProject?._id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-organization-id': organizationId,
+        },
+      });
+
+      if (response.ok) {
+        console.log('Proyecto eliminado:', selectedProject?._id);
+        setNotification({ open: true, message: 'Proyecto eliminado exitosamente', severity: 'success' });
+        fetchProjects(); // Refetch de los proyectos después de eliminar
+      } else {
+        const errorData = await response.json();
+        console.error('Error eliminando el proyecto:', errorData);
+        setNotification({ open: true, message: errorData.message || 'Error eliminando el proyecto', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Error en la solicitud:', error);
+      setNotification({ open: true, message: 'Error en la solicitud', severity: 'error' });
+    } finally {
+      setIsDeleting(false);
+      setOpenDeleteDialog(false); // Cierra el diálogo
+    }
+  };
+
   const filteredProjects = useMemo(() => projects.filter(project => {
     const query = searchQuery.toLowerCase();
     return (
@@ -210,9 +254,11 @@ const ProjectsPage = () => {
       (project.min_price && project.min_price.toString().includes(query)) ||
       (project.max_price && project.max_price.toString().includes(query)) ||
       (project.real_estate_company.name && project.real_estate_company.name.toLowerCase().includes(query)) ||
-      (project.county.name && project.county.name.toLowerCase().includes(query))
+      (project.county.name && project.county.name.toLowerCase().includes(query)) || 
+      (project?.deliveryType && project?.deliveryType.toLowerCase().includes(query))
     );
   }), [projects, searchQuery]);
+  
 
   const handleMenuClick = useCallback((event, project) => {
     setAnchorEl(event.currentTarget);
@@ -229,10 +275,12 @@ const ProjectsPage = () => {
     handleMenuClose();
   }, [selectedProject, handleMenuClose, router]);
 
-  const handleDelete = useCallback(() => {
-    console.log('Eliminar proyecto:', selectedProject._id);
+  const handleDelete = useCallback((project) => {
+    setSelectedProject(project);
+    setOpenDeleteDialog(true);
     handleMenuClose();
-  }, [selectedProject, handleMenuClose]);
+  }, [handleMenuClose]);
+  
 
   const handleChangePage = useCallback((event, newPage) => {
     setPage(newPage);
@@ -315,17 +363,18 @@ const ProjectsPage = () => {
         )}
         {viewMode === 'grid' ? (
           <Grid container spacing={4}>
-            {filteredProjects.slice(0, promptFocused ? 9 : filteredProjects.length).map(project => (
+            {filteredProjects.map(project => (
               <Grid item key={project._id} xs={12} sm={6} md={4}>
                 <ProjectCard
-                  ref={el => projectRefs.current[project._id] = el}
                   project={project}
                   updatedProjectIds={updatedProjectIds}
                   fallbackImage={fallbackImage}
+                  fetchProjects={fetchProjects}  // Aquí pasamos la función de refetch
                 />
               </Grid>
             ))}
           </Grid>
+        
         ) : (
           <>
             <TableContainer component={Paper}>
@@ -421,7 +470,8 @@ const ProjectsPage = () => {
             Editar stock
           </ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleDelete}>
+        
+        <MenuItem onClick={() => handleDelete(project)}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
@@ -429,6 +479,7 @@ const ProjectsPage = () => {
             Eliminar
           </ListItemText>
         </MenuItem>
+
       </Menu>
       {/* <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
@@ -443,6 +494,28 @@ const ProjectsPage = () => {
           {notification.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Estás seguro de que deseas eliminar el proyecto {selectedProject?.name || ''}? Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
+            Cancelar
+          </Button>
+          <Button onClick={confirmDelete} color="error" disabled={isDeleting}>
+            {isDeleting ? <CircularProgress size={24} /> : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
     </Box>
   );
 }

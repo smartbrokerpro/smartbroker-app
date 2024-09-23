@@ -37,6 +37,10 @@ const stockSchema = new mongoose.Schema({
     type: Number,
     min: [0, 'La superficie de la terraza no puede ser negativa']
   },
+  garden_surface: {
+    type: Number,
+    min: [0, 'La superficie del jardín no puede ser negativa']
+  },
   total_surface: {
     type: Number,
     required: [true, 'La superficie total es obligatoria'],
@@ -75,7 +79,8 @@ const stockSchema = new mongoose.Schema({
     trim: true
   },
   real_estate_company_id: {
-    type: mongoose.Schema.Types.ObjectId
+    type: mongoose.Schema.Types.ObjectId,
+    required: [true, 'El ID de la inmobiliaria es obligatorio']
   },
   real_estate_company_name: {
     type: String,
@@ -87,6 +92,26 @@ const stockSchema = new mongoose.Schema({
     trim: true
   },
   project_name: {
+    type: String,
+    trim: true
+  },
+  floor: {
+    type: Number,
+    min: [0, 'El piso no puede ser negativo']
+  },
+  installments: {
+    type: Number,
+    min: [0, 'El número de cuotas no puede ser negativo']
+  },
+  downpayment: {
+    type: Number,
+    min: [0, 'El pago inicial no puede ser negativo']
+  },
+  deliveryDateDescr: {
+    type: String,
+    trim: true
+  },
+  deliveryType: {
     type: String,
     trim: true
   },
