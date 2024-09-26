@@ -60,9 +60,9 @@ const ModalUnitDetails = ({ open, onClose, unit }) => {
         )}
       </DialogContent>
       <DialogActions>
-        {/* <Button variant="contained" color="primary" onClick={onClose}>
+        <Button variant="contained" color="primary" onClick={onClose}>
           Cotizar
-        </Button> */}
+        </Button>
       </DialogActions>
     </Dialog>
   );
