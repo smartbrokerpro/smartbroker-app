@@ -9,9 +9,27 @@ import 'katex/dist/katex.min.css';
 import SendIcon from '@mui/icons-material/Send';
 
 const processLatexContent = (content) => {
-  return content
-    .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$${formula.trim()}$$`)
-    .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula.trim()}$`);
+  // Procesar fórmulas en bloque ($$...$$)
+  content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
+    return match.replace(/\n/g, ' ');
+  });
+
+  // Procesar fórmulas en línea ($...$)
+  content = content.replace(/\$(.*?)\$/g, (match) => {
+    return match.replace(/\n/g, ' ');
+  });
+
+  // Procesar fórmulas en bloque (\[...\])
+  content = content.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
+    return `$$${formula.trim().replace(/\n/g, ' ')}$$`;
+  });
+
+  // Procesar fórmulas en línea (\(...\))
+  content = content.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
+    return `$${formula.trim().replace(/\n/g, ' ')}$`;
+  });
+
+  return content;
 };
 
 const Message = React.memo(({ message }) => {
@@ -75,10 +93,8 @@ export default function SmartyV2() {
       
       let scrollPosition;
       if (messageHeight > containerHeight) {
-        // Si el mensaje es más alto que el contenedor, scroll al top del mensaje
         scrollPosition = messageTop;
       } else {
-        // Si no, aseguramos que el mensaje esté completamente visible al final
         scrollPosition = Math.max(0, messageTop + messageHeight - containerHeight);
       }
 
@@ -97,7 +113,6 @@ export default function SmartyV2() {
     setChatHistory(prev => [...prev, { type: 'user', content: query }]);
     setQuery('');
     
-    // Scroll después de agregar el mensaje del usuario
     setTimeout(scrollToNewMessage, 0);
 
     try {
@@ -137,63 +152,67 @@ export default function SmartyV2() {
 
   return (
     <Box sx={{ 
-      height: 'calc(100vh - 64px)', // Ajusta esto según la altura de tu header
+      height: '98vh',
       display: 'flex', 
       flexDirection: 'column',
       bgcolor: '#f0f7e6',
       position: 'relative',
-      width: '100%'
+      width: '100%',
+      overflowY: 'hidden'
     }}>
-      <Box ref={chatContainerRef} sx={{ 
-        flexGrow: 1, 
-        overflowY: 'auto', 
-        display: 'flex', 
+      <Box sx={{
+        flexGrow: 1,
+        display: 'flex',
         flexDirection: 'column',
-        p: 2
+        overflowY: 'hidden'
       }}>
-        {chatHistory.map((message, index) => (
-          <Box 
-            key={index}
-            ref={index === chatHistory.length - 1 ? lastMessageRef : null}
-            sx={{
-              alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
-              maxWidth: '70%',
-              m: 2,
-            }}
-          >
-            <Message message={message} />
-          </Box>
-        ))}
-        {isLoading && (
-          <Box 
-            ref={lastMessageRef}
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              minHeight: '60px', 
-              maxWidth: '70%',
-              m: 2,
-              p: 2,
-              bgcolor: '#ffffff',
-              border: '1px solid #8DCB42',
-              borderRadius: '8px',
-              alignSelf: 'flex-start'
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        )}
+        <Box ref={chatContainerRef} sx={{ 
+          flexGrow: 1, 
+          overflowY: 'auto', 
+          display: 'flex', 
+          flexDirection: 'column',
+          p: 2
+        }}>
+          {chatHistory.map((message, index) => (
+            <Box 
+              key={index}
+              ref={index === chatHistory.length - 1 ? lastMessageRef : null}
+              sx={{
+                alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '70%',
+                m: 2,
+              }}
+            >
+              <Message message={message} />
+            </Box>
+          ))}
+          {isLoading && (
+            <Box 
+              ref={lastMessageRef}
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                minHeight: '60px', 
+                maxWidth: '70%',
+                m: 2,
+                p: 2,
+                bgcolor: '#ffffff',
+                border: '1px solid #8DCB42',
+                borderRadius: '8px',
+                alignSelf: 'flex-start'
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          )}
+        </Box>
       </Box>
       
       <Box sx={{ 
-        width: 'calc(100% - 240px)', 
-        position: 'fixed',
-        bottom: '1rem',
-        left: '240px',
-        display: 'flex',
-        justifyContent: 'center',
-        padding: '10px'
+        width: '100%', 
+        padding: '10px',
+        backgroundColor: '#f0f7e6',
       }}>
         <Paper 
           component="form" 
@@ -207,7 +226,8 @@ export default function SmartyV2() {
             p: 1,
             width: '100%',  
             maxWidth: '800px',
-            bgcolor: '#fff'
+            bgcolor: '#fff',
+            margin: '0 auto'
           }}
         >
           <TextField
