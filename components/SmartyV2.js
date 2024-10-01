@@ -34,9 +34,9 @@ const examples = [
   { icon: <FilterListIcon fontSize="large" />, text: "Muéstrame doce unidades de 2 dormitorios y 2 baños." },
   { icon: <ExploreIcon fontSize="large" />, text: "Enséñame 8 unidades con orientación al norte." },
   { icon: <PaymentIcon fontSize="large" />, text: "Encuentra diez unidades con un bono pie del 15%." },
-  { icon: <SurfaceIcon fontSize="large" />, text: "Listar todas las unidades con una superficie total entre 50 a 55 m2." },
-  { icon: <MapIcon fontSize="large" />, text: "Quiero ver todas las unidades de dos dormitorios y dos baños en la comuna de La Florida." },
-  { icon: <PriceCheckIcon fontSize="large" />, text: "Mostrar todas las unidades con valor menor a 2400 UF." }
+  { icon: <SurfaceIcon fontSize="large" />, text: "Dime las comunas con mayor precio por m2." },
+  { icon: <MapIcon fontSize="large" />, text: "Dime los unidades que tiene cada comuna, y el porcentaje correspondiente del total." },
+  { icon: <PriceCheckIcon fontSize="large" />, text: "Mostrar 15 unidades de precio cercano a 3000 UF en la comuna de La Florida, con orientación norte." }
 ];
 
 const processLatexContent = (content) => {
