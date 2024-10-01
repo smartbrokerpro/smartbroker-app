@@ -96,11 +96,13 @@ export async function handleSearchRequest(req, res) {
           Responde ÚNICAMENTE con el objeto JSON que representa la consulta MongoDB, sin explicaciones adicionales. 
           Para agregaciones, usa la estructura: {"aggregate": "stock", "pipeline": [...]}.
           Para búsquedas simples, usa la estructura: {"find": {...}, "sort": {...}, "limit": ...}.
-          Asegúrate de manejar posibles valores no numéricos o nulos en los campos numéricos.
+          Asegúrate de manejar posibles valores no numéricos o nulos en los campos numéricos, especialmente en divisiones.
           Para tipologías, usa el campo 'typology' y especifica el número de dormitorios y baños (ej: "1 dormitorio 1 baño" o "1D1B").
           Para orientación, usa el campo 'orientation'.
           Para superficies, usa el campo 'total_surface'.
           Para descuentos, usa el campo 'discount'.
+          Siempre incorpora indicadores además del _id. Por ejemplo, si te piden proyectos, agrega también el nombre del proyecto.
+          Para disponibilidad o tipo de entrega usa el campo 'deliveryType'.
           Asegúrate de que todos los operadores de MongoDB (como $gt, $lt, etc.) estén entre comillas.`
         },
         { role: "user", content: query }
@@ -165,7 +167,7 @@ export async function handleSearchRequest(req, res) {
     console.log(`Número de resultados obtenidos: ${results.length}`);
 
     const analysisPrompt = `
-      Analiza brevemente los siguientes resultados: ${JSON.stringify(results)}
+      Analiza brevemente los siguientes resultados: ${JSON.stringify(results)}, considerando que la consulta original del usuario fue ${query}
       
       Instrucciones:
       1. Proporciona un análisis conciso de los resultados como tabla
@@ -174,8 +176,14 @@ export async function handleSearchRequest(req, res) {
       4. No hagas suposiciones sobre información no proporcionada en los datos.
       5. Si no hay resultados, explica posibles razones por las que la búsqueda no arrojó resultados y sugiere cómo ampliar la búsqueda.
       6. Nunca uses ids de mongo, siempre usa nombres cuando sea posible.
-      7. Si es filtro de unidades, siempre parte con el proyecto y luego el número de la unidad.
-      
+      7. Siempre indica el proyecto primero y luego el número de la unidad.
+      8. La jerarquía de la información es inmobiliaria, proyecto, unidad o stock o departamento o apartamento
+      9. Usa siempre los datos entregados, NUNCA los inventes.
+      10. Valor es lo mismo que precio.
+      11. Siempre ordena los valores de mayor a menor, o viceversa, a tu criterio.
+      12. Si haces calculos, muestra las fórmulas.
+      13. Los números deben siempre usar . para miles y , para decimales, tanto en la explicación como en las tablas.
+      14. Cuando te pidan unidades, haz que el numero o nombre de la unidad sea un enlace que lleve a http://localhost:3000/[project_id]/stock/[id_unidad], donde id_unidad es el id de mongo de esa unidad, y project_id es el id de mongo del proyecto al que pertenece
       Tu análisis debe ser breve y basado únicamente en la información proporcionada. Precios en UF
     `;
 
@@ -184,7 +192,7 @@ export async function handleSearchRequest(req, res) {
       messages: [
         { 
           role: "system", 
-          content: "Eres un experto analista del mercado inmobiliario. Tu tarea es proporcionar análisis detallados y perspicaces de datos inmobiliarios, asegurándote de incluir siempre las unidades relevantes en tus observaciones."
+          content: "Eres un experto analista del mercado inmobiliario. Tu tarea es proporcionar análisis detallados y perspicaces de datos inmobiliarios, incluyendo no solo promedios, sino también otras métricas relevantes como varianza, mediana, desviación estándar y cualquier otra estadística que ayude a clarificar la interpretación de los datos cuando sea apropiado. Agrega una definición de cada métrica de 3 a 4 palabras cuando sean usadas."
         },
         { role: "user", content: analysisPrompt }
       ],

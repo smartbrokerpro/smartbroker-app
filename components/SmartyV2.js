@@ -1,29 +1,104 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, TextField, Button, Typography, Paper, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Box, TextField, Button, Paper, CircularProgress, Typography, Table, TableBody, TableCell, TableContainer, TableRow, InputAdornment } from '@mui/material';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';  // Importa el plugin para soporte de tablas
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import SendIcon from '@mui/icons-material/Send';
+
+const processLatexContent = (content) => {
+  return content
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$${formula.trim()}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => `$${formula.trim()}$`);
+};
+
+const Message = React.memo(({ message }) => {
+  const content = message.type === 'user' 
+    ? <Typography>{message.content}</Typography>
+    : (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          h1: ({node, ...props}) => <Typography variant="h4" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+          h2: ({node, ...props}) => <Typography variant="h5" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+          h3: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+          h4: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1 }} {...props} />,
+          p: ({node, ...props}) => <Typography sx={{ mb: 1 }} {...props} />,
+          table: ({node, ...props}) => (
+            <TableContainer component={Paper} sx={{ my: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ccc' }} {...props} />
+            </TableContainer>
+          ),
+          th: ({node, ...props}) => (
+            <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f0f7e6', border: '1px solid #ccc' }} {...props} />
+          ),
+          td: ({node, ...props}) => (
+            <TableCell sx={{ border: '1px solid #ccc' }} {...props} />
+          ),
+          ul: ({node, ...props}) => <Box component="ul" sx={{ pl: 3, mb: 1 }} {...props} />,
+          ol: ({node, ...props}) => <Box component="ol" sx={{ pl: 3, mb: 1 }} {...props} />,
+          li: ({node, ...props}) => <Box component="li" sx={{ mb: 0.5 }} {...props} />,
+          strong: ({node, ...props}) => <strong style={{ fontWeight: 'bold' }} {...props} />,
+        }}
+      >
+        {processLatexContent(message.content)}
+      </ReactMarkdown>
+    );
+
+  return (
+    <Paper elevation={1} sx={{ 
+      p: 2, 
+      bgcolor: message.type === 'user' ? '#d9ecc7' : '#ffffff',
+      border: message.type === 'user' ? '1px solid #8DCB42' : 'none'
+    }}>
+      {content}
+    </Paper>
+  );
+});
 
 export default function SmartyV2() {
   const [query, setQuery] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { data: session } = useSession();
   const chatContainerRef = useRef(null);
+  const lastMessageRef = useRef(null);
+
+  const scrollToNewMessage = () => {
+    if (lastMessageRef.current && chatContainerRef.current) {
+      const containerHeight = chatContainerRef.current.clientHeight;
+      const messageTop = lastMessageRef.current.offsetTop;
+      const messageHeight = lastMessageRef.current.clientHeight;
+      
+      let scrollPosition;
+      if (messageHeight > containerHeight) {
+        // Si el mensaje es más alto que el contenedor, scroll al top del mensaje
+        scrollPosition = messageTop;
+      } else {
+        // Si no, aseguramos que el mensaje esté completamente visible al final
+        scrollPosition = Math.max(0, messageTop + messageHeight - containerHeight);
+      }
+
+      chatContainerRef.current.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!session) {
-      alert('No hay sesión activa');
-      return;
-    }
-    if (!query.trim()) return;
+    if (!session || !query.trim()) return;
 
-    setLoading(true);
-    const userMessage = { type: 'user', content: query };
-    setChatHistory(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setChatHistory(prev => [...prev, { type: 'user', content: query }]);
     setQuery('');
+    
+    // Scroll después de agregar el mensaje del usuario
+    setTimeout(scrollToNewMessage, 0);
 
     try {
       const res = await fetch('/api/smartyv2', {
@@ -37,147 +112,159 @@ export default function SmartyV2() {
       });
       const data = await res.json();
       if (res.ok) {
-        const assistantMessage = { 
-          type: 'assistant', 
-          content: data.analysis
-        };
-        setChatHistory(prev => [...prev, assistantMessage]);
+        setChatHistory(prev => [...prev, { type: 'assistant', content: data.analysis }]);
       } else {
         throw new Error(data.error || 'Error al procesar la solicitud');
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert(error.message);
+      setChatHistory(prev => [...prev, { type: 'assistant', content: 'Lo siento, hubo un error al procesar tu consulta. Por favor, intenta nuevamente.' }]);
     }
-    setLoading(false);
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (chatHistory.length > 0) {
+      scrollToNewMessage();
     }
   }, [chatHistory]);
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
     <Box sx={{ 
-      height: 'calc(100vh - 16px)', 
-      margin: 0,
-      padding: '1rem',
+      height: 'calc(100vh - 64px)', // Ajusta esto según la altura de tu header
       display: 'flex', 
       flexDirection: 'column',
-      bgcolor: '#f0f7e6'  // Lighter shade of #8DCB42
+      bgcolor: '#f0f7e6',
+      position: 'relative',
+      width: '100%'
     }}>
       <Box ref={chatContainerRef} sx={{ 
         flexGrow: 1, 
         overflowY: 'auto', 
         display: 'flex', 
-        flexDirection: 'column-reverse',
-        gap: 2,
-        mb: 2  // Margen inferior agregado para las cajas flotantes
+        flexDirection: 'column',
+        p: 2
       }}>
-        {chatHistory.slice().reverse().map((message, index) => (
-          <Box key={index} sx={{
-            alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
-            maxWidth: '70%',
-            mb: 2  // Margen inferior agregado para cada mensaje
-          }}>
-            <Paper elevation={1} sx={{ 
-              p: 2, 
-              bgcolor: message.type === 'user' ? '#d9ecc7' : '#ffffff',  // Lighter and darker shades of #8DCB42
-              border: message.type === 'user' ? '1px solid #8DCB42' : 'none'
-            }}>
-              {message.type === 'user' ? (
-                <Typography>{message.content}</Typography>
-              ) : (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}  // Añade el plugin para tablas
-                  components={{
-                    h1: ({ node, ...props }) => <Typography variant="h4" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-                    h2: ({ node, ...props }) => <Typography variant="h5" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-                    h3: ({ node, ...props }) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-                    p: ({ node, ...props }) => <Typography sx={{ mb: 1 }} {...props} />,
-                    table: ({ node, ...props }) => (
-                      <TableContainer component={Paper} sx={{ my: 2 }}>
-                        <Table size="small" sx={{ border: '1px solid #ccc' }} {...props}>  {/* Borde de la tabla */}
-                          {props.children}
-                        </Table>
-                      </TableContainer>
-                    ),
-                    th: ({ node, ...props }) => (
-                      <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f0f7e6', border: '1px solid #ccc' }} {...props}>  {/* Encabezado con borde */}
-                        {props.children}
-                      </TableCell>
-                    ),
-                    td: ({ node, ...props }) => (
-                      <TableCell sx={{ border: '1px solid #ccc' }} {...props}>  {/* Celdas con borde */}
-                        {props.children}
-                      </TableCell>
-                    ),
-                    ul: ({ node, ...props }) => <Box component="ul" sx={{ pl: 2, mb: 1 }} {...props} />,
-                    ol: ({ node, ...props }) => <Box component="ol" sx={{ pl: 2, mb: 1 }} {...props} />,
-                    li: ({ node, ...props }) => <Box component="li" sx={{ mb: 0.5 }} {...props} />,
-                    strong: ({ node, ...props }) => <strong style={{ fontWeight: 'bold' }} {...props} />,
-                  }}
-                >
-                  {message.content}
-                </ReactMarkdown>
-              )}
-            </Paper>
+        {chatHistory.map((message, index) => (
+          <Box 
+            key={index}
+            ref={index === chatHistory.length - 1 ? lastMessageRef : null}
+            sx={{
+              alignSelf: message.type === 'user' ? 'flex-end' : 'flex-start',
+              maxWidth: '70%',
+              m: 2,
+            }}
+          >
+            <Message message={message} />
           </Box>
         ))}
+        {isLoading && (
+          <Box 
+            ref={lastMessageRef}
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              minHeight: '60px', 
+              maxWidth: '70%',
+              m: 2,
+              p: 2,
+              bgcolor: '#ffffff',
+              border: '1px solid #8DCB42',
+              borderRadius: '8px',
+              alignSelf: 'flex-start'
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        )}
       </Box>
-      <Paper 
-        component="form" 
-        onSubmit={handleSubmit}
-        sx={{ 
-          p: 2, 
-          display: 'flex', 
-          alignItems: 'center',
-          gap: 1,
-          bgcolor: '#ffffff',
-          borderTop: '1px solid #8DCB42'
-        }}
-      >
-        <TextField
-          fullWidth
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ingrese su consulta"
-          variant="outlined"
-          size="small"
+      
+      <Box sx={{ 
+        width: 'calc(100% - 240px)', 
+        position: 'fixed',
+        bottom: '1rem',
+        left: '240px',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '10px'
+      }}>
+        <Paper 
+          component="form" 
+          onSubmit={handleSubmit}
           sx={{ 
-            flexGrow: 1,
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': {
-                borderColor: '#8DCB42',
-              },
-              '&:hover fieldset': {
-                borderColor: '#4a6b22',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#4a6b22',
-              },
-            },
-          }}
-        />
-        <Button 
-          type="submit" 
-          variant="contained" 
-          color="primary" 
-          disabled={loading || !session}
-          sx={{ 
-            minWidth: 'auto', 
-            px: 2, 
-            py: 1,
-            bgcolor: '#8DCB42',
-            '&:hover': {
-              bgcolor: '#4a6b22',
-            },
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 1,
+            boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',  
+            borderRadius: '25px',
+            p: 1,
+            width: '100%',  
+            maxWidth: '800px',
+            bgcolor: '#fff'
           }}
         >
-          {loading ? <CircularProgress size={24} /> : <SendIcon />}
-        </Button>
-      </Paper>
+          <TextField
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Ingrese su consulta"
+            variant="outlined"
+            size="small"
+            multiline
+            minRows={1}
+            maxRows={4}
+            onKeyPress={handleKeyPress}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button 
+                    type="submit" 
+                    variant="contained" 
+                    color="primary" 
+                    disabled={isLoading || !session}
+                    sx={{ 
+                      bgcolor: '#8DCB42',
+                      width: '34px',
+                      minWidth:'34px',
+                      maxWidth:'34px',
+                      height: '34px',
+                      borderRadius: '50%',
+                      marginRight: '-10px',
+                      '&:hover': {
+                        bgcolor: '#4a6b22',
+                      },
+                      boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    {isLoading ? <CircularProgress size={12} /> : <SendIcon sx={{ fontSize: '16px' }} />}
+                  </Button>
+                </InputAdornment>
+              ),
+            }}
+            sx={{ 
+              flexGrow: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#8DCB42',
+                  borderRadius: '25px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#4a6b22',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#4a6b22',
+                },
+              },
+            }}
+          />
+        </Paper>
+      </Box>
     </Box>
   );
 }
