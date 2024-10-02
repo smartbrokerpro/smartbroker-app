@@ -31,7 +31,7 @@ import smartyImage from '/public/images/smarty.svg';
 import LottieLoader from './LottieLoader';
 
 const examples = [
-  { icon: <FilterListIcon fontSize="large" />, text: "Muéstrame doce unidades de 2 dormitorios y 2 baños." },
+  { icon: <FilterListIcon fontSize="large" />, text: "Muéstrame doce unidades de 2 dormitorios y 2 baños con al menos 10% de descuento" },
   { icon: <ExploreIcon fontSize="large" />, text: "Enséñame 8 unidades con orientación al norte." },
   { icon: <PaymentIcon fontSize="large" />, text: "Encuentra diez unidades con un bono pie del 15%." },
   { icon: <SurfaceIcon fontSize="large" />, text: "Dime las comunas con mayor precio por m2." },
