@@ -170,7 +170,7 @@ export async function handleSearchRequest(req, res) {
       Analiza brevemente los siguientes resultados: ${JSON.stringify(results)}, considerando que la consulta original del usuario fue ${query}
       
       Instrucciones:
-      1. Proporciona un análisis conciso de los resultados como tabla
+      1. Proporciona un análisis conciso de los resultados como tabla, con 20 palabras introductorias
       2. Menciona los valores más altos y más bajos encontrados, indicando a qué corresponden.
       3. Si es relevante, indica el total o promedio de los valores numéricos.
       4. No hagas suposiciones sobre información no proporcionada en los datos.
@@ -181,9 +181,9 @@ export async function handleSearchRequest(req, res) {
       9. Usa siempre los datos entregados, NUNCA los inventes.
       10. Valor es lo mismo que precio.
       11. Siempre ordena los valores de mayor a menor, o viceversa, a tu criterio.
-      12. Si haces calculos, muestra las fórmulas.
+      12. Si haces calculos, muestra las fórmulas generales, no expandidas con números. Por ejemplo, sumatorias está bien,  mostrar cada numero sumándoese está mal. Muestra siempre los resultados de las fórmulas.
       13. Los números deben siempre usar . para miles y , para decimales, tanto en la explicación como en las tablas.
-      14. Cuando te pidan unidades, haz que el numero o nombre de la unidad sea un enlace que lleve a http://localhost:3000/[project_id]/stock/[id_unidad], donde id_unidad es el id de mongo de esa unidad, y project_id es el id de mongo del proyecto al que pertenece
+      14. Cuando te pidan unidades, haz que el numero o nombre de la unidad sea un enlace que lleve a http://localhost:3000/[project_id]/stock/[id_unidad], donde id_unidad es el id de mongo de esa unidad, y project_id es el id de mongo del proyecto al que pertenece, no uses nombres, solo ids de mongo.
       Tu análisis debe ser breve y basado únicamente en la información proporcionada. Precios en UF
     `;
 

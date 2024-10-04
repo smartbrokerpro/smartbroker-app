@@ -68,6 +68,11 @@ export default function StockPage() {
     }
   }, [idProject, status]);
 
+  const handleQuotationClick = (item) => {
+    setSelectedStockItem(item);
+    setOpenQuotationDialog(true);
+  };
+
   async function fetchProject() {
     try {
       const response = await fetch(`/api/projects/details/${idProject}?organizationId=${session.user.organization._id}`);
@@ -393,6 +398,14 @@ export default function StockPage() {
                         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                           <img src="/images/plan.jpg" alt="Plan" style={{ width: '100%', height: 'auto', borderRadius: '8px' }} />
                         </Box>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => handleQuotationClick(item)}
+                          sx={{ mt: 2 }}
+                        >
+                          Cotizar
+                        </Button>
                       </Box>
                     </Collapse>
                   </TableCell>
