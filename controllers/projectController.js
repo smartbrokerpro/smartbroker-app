@@ -116,7 +116,9 @@ export const getProjects = async (req, res) => {
           installments: 1,
           deliveryDateDescr: 1,
           downpayment: 1,
-          deliveryType: 1
+          deliveryType: 1,
+          storageValue: 1,
+          parkingValue: 1
         }
       },
       {
@@ -179,6 +181,8 @@ export const createProject = async (req, res) => {
     const projectData = {
       ...req.body,
       organization_id: new ObjectId(organizationId),
+      storageValue: req.body.storageValue || 0,
+      parkingValue: req.body.parkingValue || 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -258,8 +262,9 @@ export const updateProject = async (req, res) => {
     'down_payment_bonus',
     'deliveryDateDescr',
     'downpayment',
-    'deliveryType'
-    
+    'deliveryType',
+    'storageValue',
+    'parkingValue'
   ];
 
   allowedFields.forEach(field => {
@@ -331,7 +336,9 @@ export const updateProject = async (req, res) => {
           installments: updateData.installments,
           deliveryDateDescr: updateData.deliveryDateDescr,
           downpayment: updateData.downpayment,
-          deliveryType: updateData.deliveryType
+          deliveryType: updateData.deliveryType,
+          storageValue: updateData.storageValue,
+          parkingValue: updateData.parkingValue
         }
       }
     );
@@ -349,9 +356,6 @@ export const updateProject = async (req, res) => {
     res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
   }
 };
-
-
-
 
 export const deleteProject = async (req, res) => {
   const { id } = req.params;
@@ -416,6 +420,8 @@ export const bulkUploadProjects = async (req, res) => {
         gallery: [],
         commercialConditions: null,
         country_id: new ObjectId("666fa92e6f4aed0a83b1399c"), // ID de Chile
+        storageValue: 0,
+        parkingValue: 0,
       };
 
       Object.entries(mapping).forEach(([excelHeader, dbField]) => {
@@ -423,6 +429,8 @@ export const bulkUploadProjects = async (req, res) => {
         if (columnIndex !== -1 && row[columnIndex] !== undefined) {
           if (dbField === 'delivery_date') {
             project[dbField] = new Date(row[columnIndex]);
+          } else if (['storageValue', 'parkingValue'].includes(dbField)) {
+            project[dbField] = parseFloat(row[columnIndex]) || 0;
           } else {
             project[dbField] = row[columnIndex] || null;
           }
@@ -483,4 +491,13 @@ export const bulkUploadProjects = async (req, res) => {
     console.error('Error during bulk upload:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
+};
+
+export default {
+  getProjects,
+  getProjectDetails,
+  createProject,
+  updateProject,
+  deleteProject,
+  bulkUploadProjects
 };

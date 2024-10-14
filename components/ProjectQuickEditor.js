@@ -46,7 +46,8 @@ const ProjectQuickEditor = () => {
     installments: true,
     deliveryDateDescr: true,
     deliveryType: true,
-    
+    parkingValue: true,
+    storageValue: true,
   });
   const [page, setPage] = useState(1);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -62,6 +63,8 @@ const ProjectQuickEditor = () => {
     deliveryDateDescr: 'Fecha de Entrega',
     downpayment: 'Pie',
     deliveryType: 'Tipo de Entrega',
+    parkingValue: 'Valor Estacionamiento',
+    storageValue: 'Valor Bodega',
   };
 
   const fetchProjects = useCallback(async (organizationId) => {
@@ -215,6 +218,8 @@ const ProjectQuickEditor = () => {
       installments: project.installments,
       deliveryDateDescr: project.deliveryDateDescr,
       downpayment: project.downpayment,
+      parkingValue: project.parkingValue,
+      storageValue: project.storageValue,
     };
 
     try {
@@ -383,6 +388,12 @@ const ProjectQuickEditor = () => {
                 {columnVisibility.deliveryType && (
                     <TableCell>Tipo de Entrega</TableCell>
                 )}
+                {columnVisibility.parkingValue && (
+                  <TableCell>Valor Estacionamiento</TableCell>
+                )}
+                {columnVisibility.storageValue && (
+                  <TableCell>Valor Bodega</TableCell>
+                )}
                 <TableCell>Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -545,6 +556,36 @@ const ProjectQuickEditor = () => {
                         />
                     </TableCell>
                     )}
+                  {columnVisibility.parkingValue && (
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        sx={{ width: '100px' }}
+                        value={project.parkingValue || ''}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'parkingValue', parseFloat(e.target.value))
+                        }
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </TableCell>
+                  )}
+                  {columnVisibility.storageValue && (
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        sx={{ width: '100px' }}
+                        value={project.storageValue || ''}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'storageValue', parseFloat(e.target.value))
+                        }
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       variant="contained"

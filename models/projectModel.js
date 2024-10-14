@@ -31,7 +31,9 @@ const ProjectSchema = new mongoose.Schema(
       text: { type: String },
       hyperlink: { type: String }
     },
-    reservationValue: { type: Number, min: [0, 'El valor de la reserva no puede ser negativo'] }
+    reservationValue: { type: Number, min: [0, 'El valor de la reserva no puede ser negativo'] },
+    storageValue: { type: Number, min: [0, 'El valor no puede ser negativo'] },
+    parkingValue: { type: Number, min: [0, 'El valor no puede ser negativo'] }
   },
   { timestamps: true }
 );

@@ -1,3 +1,5 @@
+// pages/clients/index.js
+
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';

@@ -65,7 +65,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies', disabled: false },
     { text: 'Proyectos', icon: <ApartmentIcon />, href: '/projects', disabled: false },
     { text: 'Clientes', icon: <GroupIcon />, href: '/clients', disabled: false },
-    { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotes', disabled: true },
+    { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotations', disabled: false },
     { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations', disabled: true },
     { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises', disabled: true },
     { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty', disabled: false },
