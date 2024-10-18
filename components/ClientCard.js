@@ -13,6 +13,11 @@ import {
   ListItemText,
   Avatar,
   Tooltip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -26,23 +31,24 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 const getStatusColor = (status) => {
   switch (status) {
     case 'contactado':
-      return '#6CD63F'; // Verde
+      return '#6CD63F';
     case 'hacer seguimiento':
-      return '#FFD700'; // Amarillo
+      return '#FFD700';
     case 'no contactado':
-      return '#FFA500'; // Naranja
+      return '#FFA500';
     case 'inubicable':
-      return '#DA3739'; // Rojo
+      return '#DA3739';
     default:
-      return '#808080'; // Gris por defecto
+      return '#808080';
   }
 };
 
-const ClientCard = React.forwardRef(({ client, updatedClientIds, updatedClientId, fallbackImage }, ref) => {
+const ClientCard = React.forwardRef(({ client, updatedClientIds, updatedClientId, fallbackImage, onDelete, organizationId }, ref) => {
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
   const [tooltipText, setTooltipText] = useState('Copiar');
   const [icon, setIcon] = useState(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const isUpdated = Array.isArray(updatedClientIds) 
     ? updatedClientIds.includes(client._id)
@@ -60,8 +66,38 @@ const ClientCard = React.forwardRef(({ client, updatedClientIds, updatedClientId
     router.push(`/clients/${client._id}/edit`);
   };
 
-  const handleDelete = () => {
-    console.log('Eliminar cliente:', client._id);
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      const response = await fetch(`/api/clients/${client._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ organizationId }),
+      });
+  
+      if (response.ok) {
+        console.log('Cliente eliminado exitosamente');
+        setDeleteDialogOpen(false);
+        onDelete(client._id);
+      } else {
+        const errorData = await response.json();
+        console.error('Error al eliminar el cliente:', errorData);
+        // Aquí podrías mostrar un mensaje de error al usuario
+      }
+    } catch (error) {
+      console.error('Error en la solicitud:', error);
+      // Aquí podrías mostrar un mensaje de error al usuario
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
   };
 
   const handleCopy = (text) => {
@@ -75,194 +111,211 @@ const ClientCard = React.forwardRef(({ client, updatedClientIds, updatedClientId
   };
 
   return (
-    <Card
-      ref={ref}
-      sx={{
-        bgcolor: 'background.paper',
-        backgroundColor: isUpdated ? 'rgba(0, 255, 0, 0.2)' : 'white',
-        transition: 'background-color 0.5s ease-in-out',
-        mb: 3,
-        position: 'relative'
-      }}
-    >
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Avatar
-            alt={`${client.first_name} ${client.last_name}`}
-            src={fallbackImage}
-            sx={{ width: 56, height: 56 }}
-          />
-          <IconButton
-            aria-label="more"
-            aria-controls="long-menu"
-            aria-haspopup="true"
-            onClick={handleMenuClick}
-          >
-            <MoreVertIcon />
-          </IconButton>
-        </Box>
-        <Menu
-          id="long-menu"
-          anchorEl={anchorEl}
-          keepMounted
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          PaperProps={{
-            style: {
-              borderRadius: '8px'
-            }
-          }}
-        >
-          <MenuItem onClick={handleEdit}>
-            <ListItemIcon>
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-              Editar
-            </ListItemText>
-          </MenuItem>
-          <MenuItem onClick={handleDelete}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-              Eliminar
-            </ListItemText>
-          </MenuItem>
-        </Menu>
-
-        {/* Nombre */}
-        <Box sx={{ mb: 1 }}>
-          <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
-            arrow
-            placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
-          >
-            <Typography
-              variant="h6"
-              component="h2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
-              onClick={() => handleCopy(`${client.first_name} ${client.last_name}`)}
-            >
-              {`${client.first_name} ${client.last_name}`}
-            </Typography>
-          </Tooltip>
-        </Box>
-
-        {/* RUT */}
-        <Box sx={{ mb: 1 }}>
-          <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
-            arrow
-            placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
-          >
-            <Typography
-              variant="body2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
-              onClick={() => handleCopy(client.rut)}
-            >
-              RUT: {client.rut}
-            </Typography>
-          </Tooltip>
-        </Box>
-
-        {/* Correo */}
-        <Box sx={{ mb: 1 }}>
-          <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
-            arrow
-            placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
-          >
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-              }}
-              onClick={() => handleCopy(client.email)}
-            >
-              <EmailIcon fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body2">
-                {client.email}
-              </Typography>
+    <>
+      <Card
+        ref={ref}
+        sx={{
+          bgcolor: 'background.paper',
+          backgroundColor: isUpdated ? 'rgba(0, 255, 0, 0.2)' : 'white',
+          transition: 'background-color 0.5s ease-in-out',
+          mb: 3,
+          position: 'relative'
+        }}
+      >
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ mb: 1 }}>
+              <Tooltip
+                title={
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                    {icon}{tooltipText}
+                  </Box>
+                }
+                arrow
+                placement="top"
+                classes={{ popper: 'MuiTooltip-copied' }}
+              >
+                <Typography
+                  variant="h6"
+                  component="h2"
+                  sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                  onClick={() => handleCopy(`${client.first_name} ${client.last_name}`)}
+                >
+                  {`${client.first_name} ${client.last_name}`}
+                </Typography>
+              </Tooltip>
             </Box>
-          </Tooltip>
-        </Box>
-
-        {/* Teléfono */}
-        <Box sx={{ mb: 1 }}>
-          <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
-            arrow
-            placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
-          >
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-              }}
-              onClick={() => handleCopy(client.phone)}
+            <IconButton
+              aria-label="more"
+              aria-controls="long-menu"
+              aria-haspopup="true"
+              onClick={handleMenuClick}
             >
-              <PhoneIcon fontSize="small" sx={{ mr: 1 }} />
-              <Typography variant="body2">
-                {client.phone}
-              </Typography>
-            </Box>
-          </Tooltip>
-        </Box>
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Chip label={client.origin} color="primary" variant="contained" size="small" />
-          <Chip
-            label={client.status}
-            sx={{
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderColor: getStatusColor(client.status),
-              color: getStatusColor(client.status),
-              backgroundColor: 'white',
-              fontWeight: 300,
+              <MoreVertIcon />
+            </IconButton>
+          </Box>
+          <Menu
+            id="long-menu"
+            anchorEl={anchorEl}
+            keepMounted
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            PaperProps={{
+              style: {
+                borderRadius: '8px'
+              }
             }}
-            size="small"
-          />
-        </Box>
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-            Contactado: {new Date(client.contact_date).toLocaleDateString()}
-          </Typography>
-        </Box>
-        <Box sx={{ m: 2, display: 'flex', justifyContent: 'center' }}>
-          <Button
-            color="primary"
-            variant="contained"
-            onClick={() => router.push(`/clients/${client._id}/details`)}
           >
-            Ver Detalles
+            <MenuItem onClick={handleEdit}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                Editar
+              </ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleDeleteClick}>
+              <ListItemIcon>
+                <DeleteIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+                Eliminar
+              </ListItemText>
+            </MenuItem>
+          </Menu>
+
+          <Box sx={{ mb: 1 }}>
+            <Tooltip
+              title={
+                <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {icon}{tooltipText}
+                </Box>
+              }
+              arrow
+              placement="top"
+              classes={{ popper: 'MuiTooltip-copied' }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+                onClick={() => handleCopy(client.rut)}
+              >
+                RUT: {client.rut}
+              </Typography>
+            </Tooltip>
+          </Box>
+
+          <Box sx={{ mb: 1 }}>
+            <Tooltip
+              title={
+                <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {icon}{tooltipText}
+                </Box>
+              }
+              arrow
+              placement="top"
+              classes={{ popper: 'MuiTooltip-copied' }}
+            >
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleCopy(client.email)}
+              >
+                <EmailIcon fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  {client.email}
+                </Typography>
+              </Box>
+            </Tooltip>
+          </Box>
+
+          <Box sx={{ mb: 1 }}>
+            <Tooltip
+              title={
+                <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {icon}{tooltipText}
+                </Box>
+              }
+              arrow
+              placement="top"
+              classes={{ popper: 'MuiTooltip-copied' }}
+            >
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleCopy(client.phone)}
+              >
+                <PhoneIcon fontSize="small" sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  {client.phone}
+                </Typography>
+              </Box>
+            </Tooltip>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, display:'none' }}>
+            <Chip label={client.origin} color="primary" variant="contained" size="small" />
+            <Chip
+              label={client.status}
+              sx={{
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: getStatusColor(client.status),
+                color: getStatusColor(client.status),
+                backgroundColor: 'white',
+                fontWeight: 300,
+              }}
+              size="small"
+            />
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+              Contactado: {new Date(client.contact_date).toLocaleDateString()}
+            </Typography>
+          </Box>
+          <Box sx={{ m: 2, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={() => router.push(`/clients/${client._id}/details`)}
+              disabled={true}
+            >
+              Ver Procesos
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"¿Estás seguro de que quieres eliminar este cliente?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Esta acción no se puede deshacer. Todos los datos asociados a {client.first_name} {client.last_name} serán eliminados permanentemente.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} color="primary">
+            Cancelar
           </Button>
-        </Box>
-      </CardContent>
-    </Card>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 });
 

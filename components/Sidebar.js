@@ -15,6 +15,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SettingsIcon from '@mui/icons-material/Settings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Image from 'next/image';
 
 const Sidebar = ({ collapsed, onToggle }) => {
@@ -22,8 +23,9 @@ const Sidebar = ({ collapsed, onToggle }) => {
   const { data: session } = useSession();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [currentCredits, setCurrentCredits] = useState(0);
-  const [maxCredits, setMaxCredits] = useState(4000); // Total de créditos
+  const [maxCredits, setMaxCredits] = useState(4000);
   const environment = process.env.NEXT_PUBLIC_ENVIRONMENT;
+  const [smartyOpen, setSmaryOpen] = useState(false);
 
   useEffect(() => {
     const fetchCredits = async () => {
@@ -60,6 +62,15 @@ const Sidebar = ({ collapsed, onToggle }) => {
     return pathname === hrefPath;
   };
 
+  const handleSmartyClick = () => {
+    setSmaryOpen(!smartyOpen);
+  };
+
+  const handleSubItemClick = (href) => {
+    setSmaryOpen(false);
+    router.push(href);
+  };
+
   const menuItems = [
     { text: 'Inicio', icon: <HomeIcon />, href: '/', disabled: false },
     { text: 'Inmobiliarias', icon: <BusinessIcon />, href: '/real-estate-companies', disabled: false },
@@ -68,11 +79,18 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { text: 'Cotizaciones', icon: <AttachMoneyIcon />, href: '/quotations', disabled: false },
     { text: 'Reservas', icon: <EventAvailableIcon />, href: '/reservations', disabled: true },
     { text: 'Promesas', icon: <AssignmentTurnedInIcon />, href: '/promises', disabled: true },
-    { text: 'Smarty', icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />, href: '/smarty', disabled: false },
+    {
+      text: 'Smarty',
+      icon: <Image src="/images/smarty.svg" alt="Smarty" width={26} height={26} />,
+      subItems: [
+        { text: 'v1', href: '/smarty' },
+        { text: 'v2', href: '/smarty/v2' }
+      ],
+      disabled: false
+    },
   ];
 
   useEffect(() => {
-    // Event listener for credit updates
     const handleCreditUpdate = (event) => {
       const { credits } = event.detail;
       setCurrentCredits(credits);
@@ -102,6 +120,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          overflowX: 'hidden',
         },
         [`& .MuiListItemIcon-root`]: {
           color: 'white',
@@ -147,28 +166,82 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </ListItem>
           <Divider />
           {menuItems.map((item) => (
-            <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
-              <Link href={item.href} passHref>
+            item.subItems ? (
+              <React.Fragment key={item.text}>
                 <ListItem
                   button
-                  disabled={item.disabled}
+                  onClick={handleSmartyClick}
                   sx={{
                     borderRadius: '0 2rem 2rem 0',
-                    backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
-                    color: isActiveRoute(item.href) ? 'black' : 'inherit',
+                    backgroundColor: isActiveRoute('/smarty') ? '#86DB2E' : 'inherit',
+                    color: isActiveRoute('/smarty') ? 'black' : 'inherit',
                     '&:hover': {
-                      backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
-                      color: isActiveRoute(item.href) ? 'black' : 'white',
+                      backgroundColor: isActiveRoute('/smarty') ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
+                      color: isActiveRoute('/smarty') ? 'black' : 'white',
                     },
-                    pointerEvents: item.disabled ? 'none' : 'auto',
-                    opacity: item.disabled ? 0.5 : 1,
                   }}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
-                  {!collapsed && <ListItemText primary={item.text} />}
+                  {!collapsed && (
+                    <>
+                      <ListItemText primary={item.text} />
+                      <ExpandMoreIcon
+                        sx={{
+                          transform: smartyOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s',
+                        }}
+                      />
+                    </>
+                  )}
                 </ListItem>
-              </Link>
-            </Tooltip>
+                {!collapsed && smartyOpen && (
+                  <List component="div" disablePadding>
+                    {item.subItems.map((subItem) => (
+                      <Link href={subItem.href} passHref key={subItem.text}>
+                        <ListItem
+                          button
+                          key={subItem.text}
+                          onClick={() => handleSubItemClick(subItem.href)}
+    
+                          sx={{
+                            pl: 4,
+                            backgroundColor: isActiveRoute(subItem.href) ? 'rgba(134, 219, 46, 0.1)' : 'inherit',
+                            '&:hover': {
+                              backgroundColor: 'rgba(134, 219, 46, 0.2)',
+                            },
+                          }}
+                        >
+                          <ListItemText primary={subItem.text} sx={{ pl: 2 }} />
+                        </ListItem>
+                      </Link>
+                    ))}
+                  </List>
+                )}
+              </React.Fragment>
+            ) : (
+              <Tooltip title={collapsed ? item.text : ''} placement="right" key={item.text}>
+                <Link href={item.href} passHref>
+                  <ListItem
+                    button
+                    disabled={item.disabled}
+                    sx={{
+                      borderRadius: '0 2rem 2rem 0',
+                      backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'inherit',
+                      color: isActiveRoute(item.href) ? 'black' : 'inherit',
+                      '&:hover': {
+                        backgroundColor: isActiveRoute(item.href) ? '#86DB2E' : 'rgba(255, 255, 255, 0.1)',
+                        color: isActiveRoute(item.href) ? 'black' : 'white',
+                      },
+                      pointerEvents: item.disabled ? 'none' : 'auto',
+                      opacity: item.disabled ? 0.5 : 1,
+                    }}
+                  >
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    {!collapsed && <ListItemText primary={item.text} />}
+                  </ListItem>
+                </Link>
+              </Tooltip>
+            )
           ))}
         </List>
       </Box>
@@ -195,7 +268,6 @@ const Sidebar = ({ collapsed, onToggle }) => {
         </Box>
         <Divider sx={{ borderColor: '#222222', borderStyle: 'dotted' }} />
 
-        {/* Nueva sección para los créditos */}
         <Box sx={{ mt: 2, mb: 2 }}>
           <LinearProgress variant="determinate" value={(currentCredits / maxCredits) * 100} sx={{ height: 10, borderRadius: 5, backgroundColor: 'gray', '& .MuiLinearProgress-bar': { backgroundColor: '#86DB2E' } }} />
           <Typography variant="caption" sx={{ color: 'white' }}>

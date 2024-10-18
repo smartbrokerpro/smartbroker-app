@@ -31,7 +31,7 @@ const theme = createTheme({
 });
 
 function QuotationDialog({ open, onClose, stockItem, projectName }) {
-  const { data: session } = useSession(); // Obtener la sesión del usuario
+  const { data: session } = useSession();
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [ufValue, setUfValue] = useState(null);
@@ -46,12 +46,16 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
     creditTerm: 30,
     annualRate: 4.5,
     storage: false,
-    parking: false
+    storageValue: 0,
+    parking: false,
+    parkingValue: 0
   });
 
   const [calculatedValues, setCalculatedValues] = useState({
     amountToFinance: 0,
-    estimatedDividend: 0
+    estimatedDividend: 0,
+    minimumDownPayment: 0,
+    suggestedCuoton: 0
   });
 
   useEffect(() => {
@@ -102,19 +106,35 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
 
   useEffect(() => {
     calculateMortgage();
-  }, [formData]);
+  }, [formData, stockItem]);
+
+  const calculateMinimumDownPayment = () => {
+    const price = stockItem ? stockItem.current_list_price : 0;
+    const discountedPrice = price * (1 - formData.discount / 100);
+    const additionalCosts = (formData.storage ? formData.storageValue : 0) + (formData.parking ? formData.parkingValue : 0);
+    const totalPrice = discountedPrice + additionalCosts;
+    return (totalPrice * formData.downPayment) / 100;
+  };
+
+  const calculateSuggestedCuoton = (minimumDownPayment) => {
+    const difference = minimumDownPayment - formData.downPaymentContribution;
+    return Math.max(difference, 0);
+  };
 
   const handleInputChange = (event) => {
     const { name, value, checked, type } = event.target;
     let newValue = type === 'checkbox' ? checked : parseFloat(value) || 0;
 
-    if (name === 'downPaymentContribution') {
-      newValue = Math.min(newValue, formData.downPayment);
+    if (name === 'downPayment' || name === 'downPaymentContribution' || name === 'storage' || name === 'parking' || name === 'storageValue' || name === 'parkingValue') {
+      const minimumDownPayment = calculateMinimumDownPayment();
+      const suggestedCuoton = calculateSuggestedCuoton(minimumDownPayment);
+      setCalculatedValues(prev => ({ ...prev, minimumDownPayment, suggestedCuoton }));
     }
 
     if (name === 'cuoton') {
-      const maxCuoton = formData.downPayment - formData.downPaymentContribution;
-      newValue = Math.min(newValue, maxCuoton);
+      const minimumDownPayment = calculateMinimumDownPayment();
+      const maxCuoton = Math.max(minimumDownPayment - formData.downPaymentContribution, 0);
+      newValue = Math.min(Math.max(newValue, 0), maxCuoton);
     }
 
     setFormData(prevState => ({
@@ -127,17 +147,24 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
     const price = stockItem ? stockItem.current_list_price : 0;
     const discountedPrice = price * (1 - formData.discount / 100);
     const bonusAmount = discountedPrice * (formData.bonus / 100);
-    const downPaymentAmount = discountedPrice * (formData.downPayment / 100);
-    const amountToFinance = discountedPrice - bonusAmount - downPaymentAmount;
+    const minimumDownPayment = calculateMinimumDownPayment();
+    const downPaymentAmount = Math.max(formData.downPaymentContribution + formData.cuoton, minimumDownPayment);
+    const additionalCosts = (formData.storage ? formData.storageValue : 0) + (formData.parking ? formData.parkingValue : 0);
+    const amountToFinance = discountedPrice - bonusAmount - downPaymentAmount + additionalCosts;
 
     const monthlyRate = (formData.annualRate / 100) / 12;
     const numberOfPayments = formData.creditTerm * 12;
     const estimatedDividend = amountToFinance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
 
-    setCalculatedValues({
+    const suggestedCuoton = calculateSuggestedCuoton(minimumDownPayment);
+
+    setCalculatedValues(prev => ({
+      ...prev,
       amountToFinance,
-      estimatedDividend
-    });
+      estimatedDividend,
+      minimumDownPayment,
+      suggestedCuoton
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -148,7 +175,7 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
       project_id: stockItem.project_id,
       stock_id: stockItem._id,
       client_id: selectedClient ? selectedClient._id : null,
-      user_id: session?.user?.id, // Agregar el ID del usuario que genera la cotización
+      user_id: session?.user?.id,
       quotation_date: new Date(),
       uf_value_at_quotation: ufValue,
       unit_value: stockItem ? stockItem.current_list_price : 0,
@@ -161,7 +188,9 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
       credit_term_years: formData.creditTerm,
       annual_rate: formData.annualRate,
       storage: formData.storage,
+      storage_value: formData.storageValue,
       parking: formData.parking,
+      parking_value: formData.parkingValue,
       financing_amount: calculatedValues.amountToFinance,
       estimated_dividend: calculatedValues.estimatedDividend,
       created_at: new Date(),
@@ -241,13 +270,29 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
                 <TextField fullWidth label="Pie (%)" name="downPayment" type="number" value={formData.downPayment} onChange={handleInputChange} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField fullWidth label="Aporte Pie (UF)" name="downPaymentContribution" type="number" value={formData.downPaymentContribution} onChange={handleInputChange} />
+                <TextField
+                  fullWidth
+                  label="Aporte Pie (UF)"
+                  name="downPaymentContribution"
+                  type="number"
+                  value={formData.downPaymentContribution}
+                  onChange={handleInputChange}
+                  helperText={`Mínimo: ${formatNumber(calculatedValues.minimumDownPayment)} UF`}
+                />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField fullWidth label="Número Cuotas Pie" name="downPaymentInstallments" type="number" value={formData.downPaymentInstallments} onChange={handleInputChange} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField fullWidth label="Cuotón (UF)" name="cuoton" type="number" value={formData.cuoton} onChange={handleInputChange} />
+                <TextField
+                  fullWidth
+                  label="Cuotón (UF)"
+                  name="cuoton"
+                  type="number"
+                  value={formData.cuoton}
+                  onChange={handleInputChange}
+                  helperText={`Valor sugerido: ${formatNumber(calculatedValues.suggestedCuoton)} UF`}
+                />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField fullWidth label="Plazo del Crédito (años)" name="creditTerm" type="number" value={formData.creditTerm} onChange={handleInputChange} />
@@ -255,9 +300,39 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
               <Grid item xs={12} sm={6}>
                 <TextField fullWidth label="Tasa Anual (%)" name="annualRate" type="number" value={formData.annualRate} onChange={handleInputChange} />
               </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel control={<Checkbox checked={formData.storage} onChange={handleInputChange} name="storage" color="secondary" />} label="Bodega" />
-                <FormControlLabel control={<Checkbox checked={formData.parking} onChange={handleInputChange} name="parking" color="secondary" />} label="Estacionamiento" />
+              <Grid item xs={12} sm={6}>
+                <FormControlLabel
+                  control={<Checkbox checked={formData.storage} onChange={handleInputChange} name="storage" color="secondary" />}
+                  label="Bodega"
+                />
+                {formData.storage && (
+                  <TextField
+                    fullWidth
+                    label="Valor Bodega (UF)"
+                    name="storageValue"
+                    type="number"
+                    value={formData.storageValue}
+                    onChange={handleInputChange}
+                    sx={{ mt: 1 }}
+                  />
+                )}
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControlLabel
+                  control={<Checkbox checked={formData.parking} onChange={handleInputChange} name="parking" color="secondary" />}
+                  label="Estacionamiento"
+                />
+                {formData.parking && (
+                  <TextField
+                    fullWidth
+                    label="Valor Estacionamiento (UF)"
+                    name="parkingValue"
+                    type="number"
+                    value={formData.parkingValue}
+                    onChange={handleInputChange}
+                    sx={{ mt: 1 }}
+                  />
+                )}
               </Grid>
             </Grid>
 

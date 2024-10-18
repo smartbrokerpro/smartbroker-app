@@ -48,6 +48,16 @@ const clientSchema = new mongoose.Schema({
   },
   notes: {
     type: String
+  },
+  broker_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Broker',
+    required: true
+  },
+  organization_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization', 
+    required: true
   }
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

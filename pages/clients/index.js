@@ -1,5 +1,3 @@
-// pages/clients/index.js
-
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
@@ -26,9 +24,12 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  SpeedDial,
+  SpeedDialIcon,
+  SpeedDialAction
 } from '@mui/material';
-import { TableRows, GridView, MoreVert, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { TableRows, GridView, MoreVert, Edit as EditIcon, Delete as DeleteIcon, PersonAdd as PersonAddIcon, GroupAdd as GroupAddIcon, Bolt as BoltIcon } from '@mui/icons-material';
 import { useRouter } from 'next/router';
 import { useSidebarContext } from '@/context/SidebarContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -37,6 +38,8 @@ import LottieLoader from '@/components/LottieLoader';
 import ClientCard from '@/components/ClientCard';
 import PromptInput from '@/components/PromptInput';
 import { useSession } from 'next-auth/react';
+import CreateClientModal from '@/components/CreateClientModal';
+
 
 const fallbackImage = '/images/avatar-fallback.jpg';
 
@@ -77,6 +80,21 @@ export default function ClientsPage() {
   const containerRef = useRef(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleClientCreated = (newClient) => {
+    setClients(prevClients => [...prevClients, newClient]);
+    showNotification('Cliente creado exitosamente', 'success');
+  };
+
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -96,16 +114,24 @@ export default function ClientsPage() {
 
   const fetchClients = useCallback(async () => {
     setIsRefetching(true);
-    const response = await fetch(`/api/clients?organizationId=${session.user.organization._id}`);
+    const response = await fetch(`/api/clients?organizationId=${session.user.organization._id}&brokerId=${session.user.id}`);
     const data = await response.json();
     if (data.success) {
-      setClients(data.data);
+      // Asegúrate de convertir los ObjectIds a strings antes de la comparación
+      setClients(data.data.filter(client => 
+        client.organization_id.toString() === session.user.organization._id.toString() && 
+        client.broker_id.toString() === session.user.id.toString()
+      ));
     } else {
       console.error('Error fetching clients:', data);
     }
     setIsRefetching(false);
     setLoading(false);
-  }, [session]);
+}, [session]);
+
+
+
+
 
   const handleUpdateClient = async (e) => {
     e.preventDefault();
@@ -233,6 +259,9 @@ export default function ClientsPage() {
     setPage(newPage);
   }, []);
 
+  
+  
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: theme.palette.background.default }}>
@@ -243,6 +272,29 @@ export default function ClientsPage() {
 
   return (
     <Box ref={containerRef} sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', position: 'relative' }}>
+      <SpeedDial
+        ariaLabel="Opciones de cliente"
+        sx={{ position: 'fixed', top: '3vh', right: '3vw' }}
+        icon={<SpeedDialIcon />}
+        direction="down"
+        openOnHover={false}
+      >
+        <SpeedDialAction
+          icon={<PersonAddIcon />}
+          tooltipTitle="Crear cliente"
+          onClick={handleOpenCreateModal}
+        />
+        <SpeedDialAction
+          icon={<GroupAddIcon />}
+          tooltipTitle="Actualización masiva de clientes"
+          onClick={() => router.push('/clients/mass-update')}
+        />
+        <SpeedDialAction
+          icon={<BoltIcon />}
+          tooltipTitle="Editor rápido de clientes"
+          onClick={() => router.push('/clients/quick-editor')}
+        />
+      </SpeedDial>
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
         <Typography variant="h4" component="h1" gutterBottom color="primary">Clientes</Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -281,6 +333,7 @@ export default function ClientsPage() {
                   updatedClientIds={updatedClientIds}
                   isUpdated={updatedClientIds.includes(client._id)}
                   fallbackImage={fallbackImage}
+                  organizationId={session.user.organization._id}
                 />
               </Grid>
             ))}
@@ -347,7 +400,7 @@ export default function ClientsPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
+                  </TableBody>
               </Table>
             </TableContainer>
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
@@ -408,9 +461,12 @@ export default function ClientsPage() {
           </ListItemText>
         </MenuItem>
       </Menu>
+      <CreateClientModal
+        open={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onClientCreated={handleClientCreated}
+        fetchClients={fetchClients}
+      />
     </Box>
   );
 }
-
-
-
