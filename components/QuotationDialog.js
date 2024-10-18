@@ -75,14 +75,19 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      fetchClients(session.user.organization._id);
+    if (session && stockItem) {
+      console.log('Session:', session);
+      console.log('StockItem:', stockItem);
+      const organizationId = session.user.organization._id;
+      const brokerId = session.user.id;
+      console.log('Fetching clients with:', { organizationId, brokerId });
+      fetchClients(organizationId, brokerId);
     }
-  }, [session]);
+  }, [session, stockItem]);
 
-  const fetchClients = async (organizationId) => {
+  const fetchClients = async (organizationId, brokerId) => {
     try {
-      const response = await fetch(`/api/clients?organizationId=${organizationId}`);
+      const response = await fetch(`/api/clients?organizationId=${organizationId}&brokerId=${brokerId}`);
       const data = await response.json();
       if (data.success) {
         setClients(data.data);

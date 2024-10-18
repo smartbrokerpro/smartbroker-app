@@ -2,6 +2,8 @@ import { createClient, getClients, deleteClient } from '@/controllers/clientCont
 
 export default async function handler(req, res) {
   console.log(`API Request Method: ${req.method}`);
+  console.log('Query parameters:', req.query);
+  console.log('Request body:', req.body);
   
   const { id } = req.query;
 

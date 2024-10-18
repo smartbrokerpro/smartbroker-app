@@ -6,6 +6,9 @@ import { clean, format } from 'rut.js';
 export const getClients = async (req, res) => {
   const { organizationId, brokerId } = req.query;
 
+  console.log('Received organizationId:', organizationId);
+  console.log('Received brokerId:', brokerId);
+
   if (!organizationId || !brokerId) {
     return res.status(400).json({ error: 'organizationId and brokerId are required' });
   }
@@ -13,6 +16,11 @@ export const getClients = async (req, res) => {
   try {
     const client = await clientPromise;
     const db = client.db(process.env.MONGODB_DB);
+
+    // Check if the IDs are valid before creating ObjectIds
+    if (!ObjectId.isValid(organizationId) || !ObjectId.isValid(brokerId)) {
+      return res.status(400).json({ error: 'Invalid organizationId or brokerId format' });
+    }
 
     const clients = await db.collection('clients').find({
       organization_id: new ObjectId(organizationId),
