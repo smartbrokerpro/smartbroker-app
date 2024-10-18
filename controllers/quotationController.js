@@ -50,6 +50,9 @@ export const createQuotation = async (req, res) => {
     const sequentialId = await getNextSequenceValue('quotations');
     console.log('Retrieved sequentialId:', sequentialId);
 
+    // Log received quotation data for debugging
+    console.log('Received quotation data:', JSON.stringify(quotationData, null, 2));
+
     const formattedData = {
       ...quotationData,
       quotation_id: sequentialId,
@@ -62,11 +65,26 @@ export const createQuotation = async (req, res) => {
       unit_value: { value: quotationData.unit_value, unit: 'UF' },
       financing_amount: { value: quotationData.financing_amount, unit: 'UF' },
       estimated_dividend: { value: quotationData.estimated_dividend, unit: 'UF' },
+      storage: {
+        included: quotationData.storage || false,
+        value: quotationData.storage && quotationData.storageValue ? 
+          { value: parseFloat(quotationData.storageValue), unit: 'UF' } : 
+          null
+      },
+      parking: {
+        included: quotationData.parking || false,
+        value: quotationData.parking && quotationData.parkingValue ? 
+          { value: parseFloat(quotationData.parkingValue), unit: 'UF' } : 
+          null
+      },
       created_at: new Date(),
       updated_at: new Date()
     };
 
-    console.log('Attempting to insert document:', JSON.stringify(formattedData, null, 2));
+    // Log formatted data for debugging
+    console.log('Formatted data:', JSON.stringify(formattedData, null, 2));
+
+    console.log('Attempting to insert document');
     const result = await collection.insertOne(formattedData);
     console.log('Insert result:', JSON.stringify(result, null, 2));
 

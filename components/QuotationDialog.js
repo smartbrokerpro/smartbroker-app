@@ -174,7 +174,7 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
+  
     const quotationData = {
       organization_id: stockItem.organization_id,
       project_id: stockItem.project_id,
@@ -193,15 +193,17 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
       credit_term_years: formData.creditTerm,
       annual_rate: formData.annualRate,
       storage: formData.storage,
-      storage_value: formData.storageValue,
+      storageValue: formData.storage ? formData.storageValue : null,
       parking: formData.parking,
-      parking_value: formData.parkingValue,
+      parkingValue: formData.parking ? formData.parkingValue : null,
       financing_amount: calculatedValues.amountToFinance,
       estimated_dividend: calculatedValues.estimatedDividend,
       created_at: new Date(),
       updated_at: new Date()
     };
-
+  
+    console.log('Quotation data being sent:', JSON.stringify(quotationData, null, 2));
+  
     try {
       const response = await fetch('/api/quotations', {
         method: 'POST',
@@ -210,9 +212,9 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
         },
         body: JSON.stringify(quotationData),
       });
-
+  
       const result = await response.json();
-
+  
       if (result.success) {
         console.log('Quotation created successfully:', result.data);
       } else {
@@ -221,7 +223,7 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
     } catch (error) {
       console.error('Error submitting quotation:', error);
     }
-
+  
     onClose();
   };
 
