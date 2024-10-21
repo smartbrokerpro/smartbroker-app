@@ -11,7 +11,9 @@ import {
   TableCell,
   TableContainer,
   TableRow,
-  InputAdornment
+  InputAdornment,
+  IconButton,
+  Snackbar
 } from '@mui/material';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
@@ -26,6 +28,8 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import SurfaceIcon from '@mui/icons-material/Fullscreen';
 import MapIcon from '@mui/icons-material/Map';
 import PriceCheckIcon from '@mui/icons-material/PriceCheck';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import Image from 'next/image';
 import smartyImage from '/public/images/smarty.svg';
 import LottieLoader from './LottieLoader';
@@ -40,22 +44,18 @@ const examples = [
 ];
 
 const processLatexContent = (content) => {
-  // Procesar fórmulas en bloque ($$...$$)
   content = content.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
     return match.replace(/\n/g, ' ');
   });
 
-  // Procesar fórmulas en línea ($...$)
   content = content.replace(/\$(.*?)\$/g, (match) => {
     return match.replace(/\n/g, ' ');
   });
 
-  // Procesar fórmulas en bloque (\[...\])
   content = content.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
     return `$$${formula.trim().replace(/\n/g, ' ')}$$`;
   });
 
-  // Procesar fórmulas en línea (\(...\))
   content = content.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
     return `$${formula.trim().replace(/\n/g, ' ')}$`;
   });
@@ -63,49 +63,114 @@ const processLatexContent = (content) => {
   return content;
 };
 
-const Message = React.memo(({ message }) => {
+const Message = React.memo(({ message, onFeedback }) => {
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  
+  const handleFeedback = (event, feedbackId, isPositive) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onFeedback(feedbackId, isPositive);
+    setOpenSnackbar(true);
+  };
+
   const content = message.type === 'user' 
     ? <Typography>{message.content}</Typography>
     : (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        components={{
-          h1: ({node, ...props}) => <Typography variant="h4" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-          h2: ({node, ...props}) => <Typography variant="h5" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-          h3: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
-          h4: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1 }} {...props} />,
-          p: ({node, ...props}) => <Typography sx={{ mb: 1 }} {...props} />,
-          table: ({node, ...props}) => (
-            <TableContainer component={Box} sx={{ my: 2, maxWidth: '100%', overflowX: 'auto' }}>
-              <Table size="small" sx={{ border: '1px solid #ccc', width: 'auto', minWidth: '50%', borderRadius:'1rem' }} {...props} />
-            </TableContainer>
-          ),
-          th: ({node, ...props}) => (
-            <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f0f7e6', border: '1px solid #ccc' }} {...props} />
-          ),
-          td: ({node, ...props}) => (
-            <TableCell sx={{ border: '1px solid #ccc' }} {...props} />
-          ),
-          ul: ({node, ...props}) => <Box component="ul" sx={{ pl: 3, mb: 1 }} {...props} />,
-          ol: ({node, ...props}) => <Box component="ol" sx={{ pl: 3, mb: 1 }} {...props} />,
-          li: ({node, ...props}) => <Box component="li" sx={{ mb: 0.5 }} {...props} />,
-          strong: ({node, ...props}) => <strong style={{ fontWeight: 'bold' }} {...props} />,
-        }}
-      >
-        {processLatexContent(message.content)}
-      </ReactMarkdown>
+      <Box sx={{position:'relative'}}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={{
+            h1: ({node, ...props}) => <Typography variant="h4" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+            h2: ({node, ...props}) => <Typography variant="h5" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+            h3: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1, fontWeight: 'bold' }} {...props} />,
+            h4: ({node, ...props}) => <Typography variant="h6" sx={{ color: '#4a6b22', mt: 2, mb: 1 }} {...props} />,
+            p: ({node, ...props}) => <Typography sx={{ mb: 1 }} {...props} />,
+            table: ({node, ...props}) => (
+              <TableContainer component={Box} sx={{ my: 2, maxWidth: '100%', overflowX: 'auto' }}>
+                <Table size="small" sx={{ border: '1px solid #ccc', width: 'auto', minWidth: '50%', borderRadius:'1rem' }} {...props} />
+              </TableContainer>
+            ),
+            th: ({node, ...props}) => (
+              <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f0f7e6', border: '1px solid #ccc' }} {...props} />
+            ),
+            td: ({node, ...props}) => (
+              <TableCell sx={{ border: '1px solid #ccc' }} {...props} />
+            ),
+            ul: ({node, ...props}) => <Box component="ul" sx={{ pl: 3, mb: 1 }} {...props} />,
+            ol: ({node, ...props}) => <Box component="ol" sx={{ pl: 3, mb: 1 }} {...props} />,
+            li: ({node, ...props}) => <Box component="li" sx={{ mb: 0.5 }} {...props} />,
+            strong: ({node, ...props}) => <strong style={{ fontWeight: 'bold' }} {...props} />,
+          }}
+        >
+          {processLatexContent(message.content)}
+        </ReactMarkdown>
+        {message.feedbackId && (
+          <Box sx={{ 
+            position: 'absolute', 
+            bottom: '-45px', 
+            right: '10px', 
+            display: 'flex', 
+            padding: '5px',            
+          }}>
+            <IconButton 
+              onClick={(e) => handleFeedback(e, message.feedbackId, true)}
+              sx={{ 
+                p: 1,
+                mr:1,
+                backgroundColor: 'white',
+                borderRadius: '3rem',
+                boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+                border:'1px solid #ccc',
+                color: message.feedback === true ? 'primary.main' : 'text.secondary',
+                '&:hover': {
+                  backgroundColor: '#e8f5e9',
+                  color: '#4caf50',
+                },
+              }}
+            >
+              <ThumbUpIcon fontSize="small" />
+            </IconButton>
+            <IconButton 
+              onClick={(e) => handleFeedback(e, message.feedbackId, false)}
+              sx={{
+                p: 1,
+                backgroundColor: 'white',
+                borderRadius: '3rem',
+                boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+                border:'1px solid #ccc',
+                color: message.feedback === false ? 'primary.main' : 'text.secondary',
+                '&:hover': {
+                  backgroundColor: '#ffebee',
+                  color: '#f44336',
+                },
+              }}
+            >
+              <ThumbDownIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+      </Box>
     );
 
-  return (
-    <Paper elevation={1} sx={{ 
-      p: 2, 
-      bgcolor: message.type === 'user' ? '#d9ecc7' : '#ffffff',
-      border: message.type === 'user' ? '1px solid #8DCB42' : 'none'
-    }}>
-      {content}
-    </Paper>
-  );
+    return (
+      <>
+        <Paper elevation={1} sx={{ 
+          p: 2, 
+          bgcolor: message.type === 'user' ? '#d9ecc7' : '#ffffff',
+          border: message.type === 'user' ? '1px solid #8DCB42' : 'none'
+        }}>
+          {content}
+        </Paper>
+        <Snackbar
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          open={openSnackbar}
+          autoHideDuration={3000}
+          onClose={() => setOpenSnackbar(false)}
+          message="¡Gracias por tu feedback!"
+        />
+      </>
+    );
 });
 
 export default function SmartyV2() {
@@ -127,7 +192,7 @@ export default function SmartyV2() {
       if (messageHeight > containerHeight) {
         scrollPosition = messageTop;
       } else {
-        scrollPosition = Math.max(0, messageTop + messageHeight - containerHeight);
+        scrollPosition = Math.max(0, messageTop + messageHeight - containerHeight + 32);
       }
 
       chatContainerRef.current.scrollTo({
@@ -161,7 +226,12 @@ export default function SmartyV2() {
       });
       const data = await res.json();
       if (res.ok) {
-        setChatHistory(prev => [...prev.slice(0, -1), { type: 'assistant', content: data.analysis }]);
+        setChatHistory(prev => [...prev.slice(0, -1), { 
+          type: 'assistant', 
+          content: data.analysis,
+          feedbackId: data.feedbackId,
+          feedback: null
+        }]);
       } else {
         throw new Error(data.error || 'Error al procesar la solicitud');
       }
@@ -186,6 +256,35 @@ export default function SmartyV2() {
 
   const handleExampleClick = (text) => {
     handleSubmit({ preventDefault: () => {} }, text);
+  };
+
+  const handleFeedback = async (feedbackId, isPositive) => {
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          feedbackId, 
+          feedback: isPositive,
+          userId: session.user.id,
+          organizationId: session.user.organization._id
+        }),
+      });
+  
+      if (response.ok) {
+        setChatHistory(prev => 
+          prev.map(msg => 
+            msg.feedbackId === feedbackId 
+              ? { ...msg, feedback: isPositive } 
+              : msg
+          )
+        );
+      } else {
+        console.error('Error al enviar feedback');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (
@@ -260,7 +359,7 @@ export default function SmartyV2() {
               {message.type === 'loading' ? (
                 <LottieLoader message="Buscando..." />
               ) : (
-                <Message message={message} />
+                <Message message={message} onFeedback={handleFeedback} />
               )}
             </Box>
           ))}
@@ -320,7 +419,7 @@ export default function SmartyV2() {
                       boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
                     }}
                   >
-                    {isLoading ? <CircularProgress size={24} /> : <SendIcon sx={{ fontSize: '16px' }} />}
+                  {isLoading ? <CircularProgress size={24} /> : <SendIcon sx={{ fontSize: '16px' }} />}
                   </Button>
                 </InputAdornment>
               ),

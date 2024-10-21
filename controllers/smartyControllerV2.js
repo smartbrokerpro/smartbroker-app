@@ -1,8 +1,7 @@
-// controllers/smartyControllerV2.js
-
 import clientPromise from '../lib/mongodb';
 import OpenAI from 'openai';
 import Stock from '../models/stockModel';
+import Feedback from '../models/feedbackModel';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,7 +12,6 @@ const schemaDescription = JSON.stringify(Stock.schema.obj, null, 2);
 function parseMongoQuery(queryString) {
   queryString = queryString.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
   
-  // Reemplazar operadores de MongoDB sin comillas por versiones con comillas
   queryString = queryString.replace(/(\w+):\s*{(\$[a-z]+):/g, '$1:{"$2":');
   
   try {
@@ -21,7 +19,6 @@ function parseMongoQuery(queryString) {
   } catch (error) {
     console.error('Error al parsear la consulta:', error);
     
-    // Intento de recuperación: evaluar como objeto JavaScript
     try {
       queryString = queryString.replace(/'/g, '"');
       const safeEval = new Function('return ' + queryString);
@@ -39,7 +36,6 @@ function flexibleQuery(field, value) {
   } else if (field === 'orientation') {
     return { $regex: new RegExp(value, 'i') };
   } else if (typeof value === 'object' && value !== null) {
-    // Convertir valores de cadena a número para campos numéricos
     if ('$gt' in value || '$lt' in value || '$gte' in value || '$lte' in value) {
       const convertedValue = {};
       for (const key in value) {
@@ -49,7 +45,6 @@ function flexibleQuery(field, value) {
     }
     return value;
   } else if (field === 'total_surface' || field === 'current_list_price' || field === 'discount') {
-    // Convertir a número si es una cadena
     return typeof value === 'string' ? Number(value) : value;
   } else {
     return { $regex: new RegExp(`^${value}$`, 'i') };
@@ -140,7 +135,6 @@ export async function handleSearchRequest(req, res) {
                                 .limit(parsedQuery.limit || 0)
                                 .toArray();
     } else if (parsedQuery.aggregate && Array.isArray(parsedQuery.pipeline)) {
-      // Lógica para agregaciones (se mantiene igual)
       const aggregatePipeline = [
         {
           $match: {
@@ -201,9 +195,23 @@ export async function handleSearchRequest(req, res) {
     const analysis = analysisResponse.choices[0].message.content;
     console.log('Análisis generado:', analysis);
 
+    const feedbackCollection = db.collection('feedbacks');
+
+    const feedbackEntry = {
+      userQuery: query,
+      mongoQuery: parsedQuery,
+      analysis: analysis,
+      userId: userId,
+      organizationId: organizationId,
+      queryDate: new Date()
+    };
+
+    const result = await feedbackCollection.insertOne(feedbackEntry);
+
     res.status(200).json({
       results,
       analysis,
+      feedbackId: result.insertedId
     });
 
   } catch (error) {
