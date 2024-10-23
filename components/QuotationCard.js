@@ -156,11 +156,11 @@ const QuotationCard = React.forwardRef(({ quotation, isUpdated, onDelete, onView
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <PersonIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
-            <Typography variant="body2">{quotation.client.first_name} {quotation.client.last_name}</Typography>
+            <Typography variant="body2">{quotation?.client?.first_name} {quotation?.client?.last_name}</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <FingerprintIcon sx={{ mr: 1, color: theme.palette.text.secondary }} />
-            <Typography variant="body2">RUT: {quotation.client.rut}</Typography>
+            <Typography variant="body2">RUT: {quotation?.client?.rut}</Typography>
           </Box>
         </Box>
 
