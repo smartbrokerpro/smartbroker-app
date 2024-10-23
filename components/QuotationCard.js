@@ -101,13 +101,13 @@ const QuotationCard = React.forwardRef(({ quotation, isUpdated, onDelete, onView
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: '1.2rem', mt:3 }}>
-              Unidad {quotation.stock.apartment}
+              Unidad {quotation?.stock?.apartment}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0 }}>
-              <Typography variant="b" sx={{ fontWeight:'700', fontSize: '0.9rem' }}>{quotation.project.name}{quotation.project.county_name ? <small> · {quotation.project.county_name}</small> : ''}</Typography>
+              <Typography variant="b" sx={{ fontWeight:'700', fontSize: '0.9rem' }}>{quotation?.project?.name}{quotation?.project?.county_name ? <small> · {quotation?.project?.county_name}</small> : ''}</Typography>
             </Box>
             <Typography variant="i" sx={{ fontSize: '0.75rem', display: 'block', mt: 0 }}>
-              {quotation.stock.real_estate_company_name}
+              {quotation?.stock?.real_estate_company_name}
             </Typography>
           </Box>
           <IconButton
