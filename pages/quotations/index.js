@@ -301,18 +301,18 @@ export default function QuotationsPage() {
                     </TableCell>
                     <TableCell>
                       <TableSortLabel
-                        active={orderBy === 'project.name'}
-                        direction={orderBy === 'project.name' ? order : 'asc'}
-                        onClick={() => handleRequestSort('project.name')}
+                        active={orderBy === 'project?.name'}
+                        direction={orderBy === 'project?.name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('project?.name')}
                       >
                         Proyecto
                       </TableSortLabel>
                     </TableCell>
                     <TableCell>
                       <TableSortLabel
-                        active={orderBy === 'project.county_name'}
-                        direction={orderBy === 'project.county_name' ? order : 'asc'}
-                        onClick={() => handleRequestSort('project.county_name')}
+                        active={orderBy === 'project?.county_name'}
+                        direction={orderBy === 'project?.county_name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('project?.county_name')}
                       >
                         Comuna
                       </TableSortLabel>
@@ -328,9 +328,9 @@ export default function QuotationsPage() {
                     </TableCell>
                     <TableCell>
                       <TableSortLabel
-                        active={orderBy === 'client.last_name'}
-                        direction={orderBy === 'client.last_name' ? order : 'asc'}
-                        onClick={() => handleRequestSort('client.last_name')}
+                        active={orderBy === 'client?.last_name'}
+                        direction={orderBy === 'client?.last_name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('client?.last_name')}
                       >
                         Cliente
                       </TableSortLabel>
@@ -379,10 +379,10 @@ export default function QuotationsPage() {
                     >
                       <TableCell>{`#${quotation.quotation_id}`}</TableCell>
                       <TableCell>{moment(quotation.quotation_date).format('DD/MM/YYYY')}</TableCell>
-                      <TableCell>{quotation.project.name}</TableCell>
-                      <TableCell>{quotation.project.county_name || '-'}</TableCell>
-                      <TableCell>{quotation.stock.apartment}</TableCell>
-                      <TableCell>{`${quotation.client.first_name} ${quotation.client.last_name}`}</TableCell>
+                      <TableCell>{quotation.project?.name}</TableCell>
+                      <TableCell>{quotation.project?.county_name || '-'}</TableCell>
+                      <TableCell>{quotation.stock?.apartment}</TableCell>
+                      <TableCell>{`${quotation.client?.first_name} ${quotation.client?.last_name}`}</TableCell>
                       <TableCell>{`${formatUF(quotation.unit_value.value)} ${quotation.unit_value.unit}`}</TableCell>
                       <TableCell>{`${formatUF(quotation.financing_amount.value)} ${quotation.financing_amount.unit}`}</TableCell>
                       <TableCell>{`${formatUF(quotation.estimated_dividend.value)} ${quotation.estimated_dividend.unit}`}</TableCell>
