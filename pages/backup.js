@@ -82,6 +82,33 @@ export default function BackupPage() {
     }
   };
 
+  const handleModelsDownload = async () => {
+    try {
+      const organizationId = session?.user?.organization?._id;
+      if (!organizationId) {
+        alert('Organization ID not found');
+        return;
+      }
+
+      const response = await fetch(`/api/backup?collection=models&organizationId=${organizationId}&format=xlsx`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const data = await response.blob();
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `modelos-stock.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading models:', error);
+      alert('An error occurred while downloading the models');
+    }
+  };
+
   return (
     <Container maxWidth="md" sx={{m:5}}>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -93,7 +120,7 @@ export default function BackupPage() {
           Backup
         </Typography> */}
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4}>
             <Button
               variant="contained"
               color="primary"
@@ -103,7 +130,7 @@ export default function BackupPage() {
               Descargar proyectos
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={4}>
             <Button
               variant="contained"
               color="primary"
@@ -111,6 +138,16 @@ export default function BackupPage() {
               onClick={(e) => handleMenuOpen(e, 'stock')}
             >
               Descargar stock
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={handleModelsDownload}
+              >
+              Descargar Modelos/Plantas
             </Button>
           </Grid>
         </Grid>
