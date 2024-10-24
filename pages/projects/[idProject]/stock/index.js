@@ -35,6 +35,8 @@ import { useSession } from 'next-auth/react';
 import PromptInput from '@/components/PromptInput'; // Importa el componente PromptInput
 import fitty from 'fitty';
 import InfoBox from '@/components/InfoBox';
+import DocumentsModal from '@/components/DocumentsModal';
+import { DescriptionOutlined } from '@mui/icons-material';  // En vez de FileText de lucide-react
 
 export default function StockPage() {
   const router = useRouter();
@@ -58,6 +60,7 @@ export default function StockPage() {
   const [openQuotationDialog, setOpenQuotationDialog] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState(null);
   const [openCommercialConditions, setOpenCommercialConditions] = useState(true);
+  const [openDocuments, setOpenDocuments] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -150,8 +153,22 @@ export default function StockPage() {
           sx={{ width: 60, height: 60, mr: 2 }}
         />
         
-        <Typography variant="h4" component="h1" color="primary">
+        {/* <Typography variant="h4" component="h1" color="primary">
           Stock del Proyecto <b>{project?.name}</b> - <small>{project?.realEstateCompanyName}</small>
+        </Typography> */}
+
+        <Typography variant="h4" component="h1" color="primary">
+          Stock del Proyecto <b>{project?.name}</b> - 
+          <small>
+            {project?.realEstateCompanyName}
+            <IconButton
+              size="small"
+              onClick={() => setOpenDocuments(true)}
+              sx={{ ml: 1, verticalAlign: 'middle' }}
+            >
+              <DescriptionOutlined fontSize="small" />
+            </IconButton>
+          </small>
         </Typography>
         
       </Box>
@@ -444,6 +461,12 @@ export default function StockPage() {
         onClose={() => setOpenQuotationDialog(false)}
         stockItem={selectedStockItem}
         projectName={project ? project.name : ''}
+      />
+      <DocumentsModal
+        open={openDocuments}
+        onClose={() => setOpenDocuments(false)}
+        documents={project?.documents || []}
+        realEstateCompanyName={project?.realEstateCompanyName}
       />
     </Box>
   );

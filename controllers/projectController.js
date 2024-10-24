@@ -153,11 +153,14 @@ export const getProjectDetails = async (req, res, organizationId) => {
       return res.status(404).json({ success: false, error: 'Project not found' });
     }
 
-    const realEstateCompany = await db.collection('real_estate_companies').findOne({ _id: project.real_estate_company_id });
+    const realEstateCompany = await db.collection('real_estate_companies').findOne({ 
+      _id: project.real_estate_company_id 
+    });
 
     const projectDetails = {
       ...project,
       realEstateCompanyName: realEstateCompany.name,
+      documents: realEstateCompany.documents || [] // Incluimos los documentos de la inmobiliaria
     };
 
     res.status(200).json({ success: true, data: projectDetails });
