@@ -158,27 +158,30 @@ export default function StockPage() {
         </Typography> */}
 
         <Typography variant="h4" component="h1" color="primary">
-          Stock del Proyecto <b>{project?.name}</b> - 
-          <small>
-            {project?.realEstateCompanyName}
-            <IconButton
-              size="small"
-              onClick={() => setOpenDocuments(true)}
-              sx={{ ml: 1, verticalAlign: 'middle' }}
-            >
-              <DescriptionOutlined fontSize="small" />
-            </IconButton>
-          </small>
-        </Typography>
+            Stock del Proyecto <b>{project?.name}</b> - 
+            <small>
+              {project?.realEstateCompanyName}
+              {project?.documents?.length > 0 && (
+                <IconButton
+                  size="small"
+                  onClick={() => setOpenDocuments(true)}
+                  sx={{ ml: 1, verticalAlign: 'middle' }}
+                  title="Ver documentos"
+                >
+                  <DescriptionOutlined fontSize="small" />
+                </IconButton>
+              )}
+            </small>
+          </Typography>
         
       </Box>
 
       {/* Cajas de información */}
-      <Box sx={{ my: 4 }}>
+      {/* <Box sx={{ my: 4 }}>
         <Grid container spacing={2}>
 
           {project?.downpayment && (
-            <InfoBox title="Pie" value={project.downpayment + "%"} />
+            <InfoBox title="Pie" value={(project.downpayment + 2) + "%"} />
           )}
 
           {project?.deliveryDateDescr && (
@@ -240,7 +243,135 @@ export default function StockPage() {
           )}
 
         </Grid>
+      </Box> */}
+
+      <Box sx={{ my: 4 }}>
+        <Grid container spacing={2}>
+          {(() => {
+            const visibleItems = [
+              {
+                label: "Pie",
+                value: project?.downpayment !== undefined ? `${(project.downpayment + 2)}%` : "0%"
+              },
+              project?.deliveryDateDescr && {
+                label: "Fecha de Entrega",
+                value: project.deliveryDateDescr
+              },
+              project?.deliveryType && {
+                label: "Tipo de Entrega",
+                value: project.deliveryType
+              },
+              project?.downPaymentMethod && {
+                label: "Método de Pago",
+                value: project.downPaymentMethod
+              },
+              project?.installments !== undefined && project?.installments !== null && {
+                label: "Cuotas",
+                value: project.installments
+              },
+              project?.promiseSignatureType && {
+                label: "Tipo de Firma de Promesa",
+                value: project.promiseSignatureType
+              },
+              project?.reservationValue && !isNaN(Number(project?.reservationValue)) && {
+                label: "Valor Reserva",
+                value: NumberFormatter({ value: parseFloat(project?.reservationValue), unit: '$' })
+              },
+              project?.county_name && {
+                label: "Comuna",
+                value: project.county_name
+              },
+              (project?.reservationInfo || project?.reservationInfo === '') && {
+                label: "Información de Reserva",
+                value: project.reservationInfo.hyperlink && project.reservationInfo.hyperlink.trim() !== '' ? (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    href={project.reservationInfo.hyperlink.replace(/['"]/g, '').trim().startsWith('http') ? 
+                      project.reservationInfo.hyperlink : `https://${project.reservationInfo.hyperlink}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ 
+                      color: 'black', 
+                      border: 'none', 
+                      borderBottom: '1px solid #9AD850', 
+                      borderRadius: '0rem',
+                      textTransform: 'none',
+                      fontSize: '0.875rem' // Texto del botón más pequeño
+                    }}
+                  >
+                    IR AL SITIO DE PAGO
+                  </Button>
+                ) : project.reservationInfo.text
+              }
+            ].filter(Boolean);
+
+            const midPoint = Math.ceil(visibleItems.length / 2);
+            const leftItems = visibleItems.slice(0, midPoint);
+            const rightItems = visibleItems.slice(midPoint);
+
+            const tableSx = {
+              '& td': { 
+                borderBottom: '1px solid rgba(224, 224, 224, 0.8)',
+                fontSize: '0.875rem', // Texto más pequeño
+                py: 0.75 // Reduce el padding vertical
+              }
+            };
+
+            return (
+              <>
+                <Grid item xs={6}>
+                  <TableContainer sx={{ border: '1px solid rgba(224, 224, 224, 0.8)' }}>
+                    <Table size="small">
+                      <TableBody>
+                        {leftItems.map((item, index) => (
+                          <TableRow key={index} sx={tableSx}>
+                            <TableCell sx={{ 
+                              color: 'grey.600', 
+                              fontWeight: 'normal',
+                              borderRight: '1px solid rgba(224, 224, 224, 0.8)'
+                            }}>
+                              {item.label}
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 'medium' }}>{item.value}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <TableContainer sx={{ border: '1px solid rgba(224, 224, 224, 0.8)' }}>
+                    <Table size="small">
+                      <TableBody>
+                        {rightItems.map((item, index) => (
+                          <TableRow key={index} sx={tableSx}>
+                            <TableCell sx={{ 
+                              color: 'grey.600', 
+                              fontWeight: 'normal',
+                              borderRight: '1px solid rgba(224, 224, 224, 0.8)'
+                            }}>
+                              {item.label}
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 'medium' }}>{item.value}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Grid>
+              </>
+            );
+          })()}
+        </Grid>
       </Box>
+
+
+
+
+
+
 
       {/* Condiciones comerciales */}
       <Box sx={{ mb: 2 }}>

@@ -33,6 +33,23 @@ const ALLOWED_IMAGE_TYPES = {
   'image/gif': true
 };
 
+const sanitizeFilename = (filename) => {
+  // Separar el nombre del archivo de la extensión
+  const lastDot = filename.lastIndexOf('.');
+  const ext = filename.substring(lastDot);
+  const nameWithoutExt = filename.substring(0, lastDot);
+
+  // Sanitizar solo el nombre, manteniendo la extensión original
+  const sanitizedName = slugify(nameWithoutExt, { 
+    lower: true, 
+    strict: true,
+    replacement: '-'
+  });
+
+  // Reunir el nombre sanitizado con la extensión original
+  return `${sanitizedName}${ext}`;
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -100,11 +117,7 @@ export default async function handler(req, res) {
           cb(null, { fieldName: file.fieldname });
         },
         key: function (req, file, cb) {
-          const sanitizedFilename = slugify(file.originalname, { 
-            lower: true, 
-            strict: true,
-            replacement: '-'
-          });
+          const sanitizedFilename = sanitizeFilename(file.originalname);
           cb(null, `${uploadPath}/${Date.now()}-${sanitizedFilename}`);
         },
       }),

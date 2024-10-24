@@ -29,6 +29,9 @@ const InfoBox = ({ title, value, hideIfZero }) => {
     return null;
   }
 
+  console.log(title, value, hideIfZero); 
+  console.log("**************");
+
   return (
     <Grid item xs={12} sm={4} lg={3} sx={{ overflow: 'visible', my: 1 }}>
       <Card sx={{ overflow: 'visible', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: '70px' }}>
