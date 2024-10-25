@@ -252,7 +252,7 @@ export const getQuotations = async (req, res) => {
   
       const result = await collection.findOneAndDelete({ _id: new ObjectId(id) });
   
-      if (result.value) {
+      if (result) {
         res.status(200).json({ success: true, message: 'Quotation deleted successfully' });
       } else {
         res.status(404).json({ success: false, message: 'Quotation not found' });

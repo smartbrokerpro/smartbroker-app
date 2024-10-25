@@ -158,9 +158,9 @@ export default function StockPage() {
         </Typography> */}
 
         <Typography variant="h4" component="h1" color="primary">
-            Stock del Proyecto <b>{project?.name}</b> - 
+            Stock <b>{project?.name}</b> · 
             <small>
-              {project?.realEstateCompanyName}
+              {" " + project?.realEstateCompanyName}
               {project?.documents?.length > 0 && (
                 <IconButton
                   size="small"
@@ -177,12 +177,12 @@ export default function StockPage() {
       </Box>
 
       {/* Cajas de información */}
-      {/* <Box sx={{ my: 4 }}>
+      <Box sx={{ my: 4 }}>
         <Grid container spacing={2}>
 
-          {project?.downpayment && (
+          {/* {project?.downpayment && (
             <InfoBox title="Pie" value={(project.downpayment + 2) + "%"} />
-          )}
+          )} */}
 
           {project?.deliveryDateDescr && (
             <InfoBox title="Fecha de Entrega" value={project.deliveryDateDescr} />
@@ -243,9 +243,9 @@ export default function StockPage() {
           )}
 
         </Grid>
-      </Box> */}
+      </Box>
 
-      <Box sx={{ my: 4 }}>
+      {/* <Box sx={{ my: 4 }}>
         <Grid container spacing={2}>
           {(() => {
             const visibleItems = [
@@ -365,7 +365,7 @@ export default function StockPage() {
             );
           })()}
         </Grid>
-      </Box>
+      </Box> */}
 
 
 

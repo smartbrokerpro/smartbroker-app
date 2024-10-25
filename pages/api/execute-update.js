@@ -1,6 +1,14 @@
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', 
+    },
+  },
+};
+
 function ensureObjectId(id) {
   return id instanceof ObjectId ? id : new ObjectId(id);
 }
