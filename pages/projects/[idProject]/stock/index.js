@@ -115,12 +115,12 @@ export default function StockPage() {
   };
 
   const filteredStock = stock.filter(item =>
-    item.apartment.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.typology.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.orientation.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.current_list_price.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.downpayment.toString().toLowerCase().includes(searchQuery.toLowerCase()) || // Cambio realizado aquí
-    item.discount.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    (item.apartment?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.typology?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.orientation?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.current_list_price?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.downpayment?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.discount?.toString() || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const sortedStock = filteredStock.sort((a, b) => {
@@ -244,134 +244,6 @@ export default function StockPage() {
 
         </Grid>
       </Box>
-
-      {/* <Box sx={{ my: 4 }}>
-        <Grid container spacing={2}>
-          {(() => {
-            const visibleItems = [
-              {
-                label: "Pie",
-                value: project?.downpayment !== undefined ? `${(project.downpayment + 2)}%` : "0%"
-              },
-              project?.deliveryDateDescr && {
-                label: "Fecha de Entrega",
-                value: project.deliveryDateDescr
-              },
-              project?.deliveryType && {
-                label: "Tipo de Entrega",
-                value: project.deliveryType
-              },
-              project?.downPaymentMethod && {
-                label: "Método de Pago",
-                value: project.downPaymentMethod
-              },
-              project?.installments !== undefined && project?.installments !== null && {
-                label: "Cuotas",
-                value: project.installments
-              },
-              project?.promiseSignatureType && {
-                label: "Tipo de Firma de Promesa",
-                value: project.promiseSignatureType
-              },
-              project?.reservationValue && !isNaN(Number(project?.reservationValue)) && {
-                label: "Valor Reserva",
-                value: NumberFormatter({ value: parseFloat(project?.reservationValue), unit: '$' })
-              },
-              project?.county_name && {
-                label: "Comuna",
-                value: project.county_name
-              },
-              (project?.reservationInfo || project?.reservationInfo === '') && {
-                label: "Información de Reserva",
-                value: project.reservationInfo.hyperlink && project.reservationInfo.hyperlink.trim() !== '' ? (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    href={project.reservationInfo.hyperlink.replace(/['"]/g, '').trim().startsWith('http') ? 
-                      project.reservationInfo.hyperlink : `https://${project.reservationInfo.hyperlink}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ 
-                      color: 'black', 
-                      border: 'none', 
-                      borderBottom: '1px solid #9AD850', 
-                      borderRadius: '0rem',
-                      textTransform: 'none',
-                      fontSize: '0.875rem' // Texto del botón más pequeño
-                    }}
-                  >
-                    IR AL SITIO DE PAGO
-                  </Button>
-                ) : project.reservationInfo.text
-              }
-            ].filter(Boolean);
-
-            const midPoint = Math.ceil(visibleItems.length / 2);
-            const leftItems = visibleItems.slice(0, midPoint);
-            const rightItems = visibleItems.slice(midPoint);
-
-            const tableSx = {
-              '& td': { 
-                borderBottom: '1px solid rgba(224, 224, 224, 0.8)',
-                fontSize: '0.875rem', // Texto más pequeño
-                py: 0.75 // Reduce el padding vertical
-              }
-            };
-
-            return (
-              <>
-                <Grid item xs={6}>
-                  <TableContainer sx={{ border: '1px solid rgba(224, 224, 224, 0.8)' }}>
-                    <Table size="small">
-                      <TableBody>
-                        {leftItems.map((item, index) => (
-                          <TableRow key={index} sx={tableSx}>
-                            <TableCell sx={{ 
-                              color: 'grey.600', 
-                              fontWeight: 'normal',
-                              borderRight: '1px solid rgba(224, 224, 224, 0.8)'
-                            }}>
-                              {item.label}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 'medium' }}>{item.value}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-
-                <Grid item xs={6}>
-                  <TableContainer sx={{ border: '1px solid rgba(224, 224, 224, 0.8)' }}>
-                    <Table size="small">
-                      <TableBody>
-                        {rightItems.map((item, index) => (
-                          <TableRow key={index} sx={tableSx}>
-                            <TableCell sx={{ 
-                              color: 'grey.600', 
-                              fontWeight: 'normal',
-                              borderRight: '1px solid rgba(224, 224, 224, 0.8)'
-                            }}>
-                              {item.label}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 'medium' }}>{item.value}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-              </>
-            );
-          })()}
-        </Grid>
-      </Box> */}
-
-
-
-
-
-
 
       {/* Condiciones comerciales */}
       <Box sx={{ mb: 2 }}>
