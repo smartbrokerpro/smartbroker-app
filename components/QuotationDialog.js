@@ -15,9 +15,13 @@ import {
   Paper,
   Box,
   ThemeProvider,
-  createTheme
+  createTheme,
+  IconButton,
+  
 } from '@mui/material';
 import { format } from 'date-fns';
+import CreateClientModal from '@/components/CreateClientModal';
+import { Add as AddIcon } from '@mui/icons-material';
 
 const theme = createTheme({
   palette: {
@@ -35,6 +39,8 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [ufValue, setUfValue] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
 
   const [formData, setFormData] = useState({
     discount: 0,
@@ -57,6 +63,14 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
     minimumDownPayment: 0,
     suggestedCuoton: 0
   });
+
+  const handleOpenCreateModal = () => setIsCreateModalOpen(true);
+  const handleCloseCreateModal = () => setIsCreateModalOpen(false);
+  const handleClientCreated = (newClient) => {
+    setClients(prevClients => [...prevClients, newClient]);
+    setSelectedClient(newClient);
+    handleCloseCreateModal();
+  };
 
   useEffect(() => {
     const fetchUF = async () => {
@@ -255,16 +269,33 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
               </Grid>
             </Paper>
 
-            <Autocomplete
-              options={clients}
-              getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
-              renderInput={(params) => <TextField {...params} label="Seleccionar Cliente" fullWidth />}
-              value={selectedClient}
-              onChange={(event, newValue) => {
-                setSelectedClient(newValue);
-              }}
-              sx={{ mb: 2 }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <Autocomplete
+                options={clients}
+                getOptionLabel={(option) => `${option.first_name} ${option.last_name}`}
+                renderInput={(params) => (
+                  <TextField {...params} label="Seleccionar Cliente" fullWidth />
+                )}
+                value={selectedClient}
+                onChange={(event, newValue) => {
+                  setSelectedClient(newValue);
+                }}
+                sx={{ flex: 1 }}
+              />
+              <IconButton 
+                onClick={handleOpenCreateModal}
+                color="primary"
+                sx={{ 
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  },
+                }}
+              >
+                <AddIcon />
+              </IconButton>
+            </Box>
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
@@ -364,6 +395,14 @@ function QuotationDialog({ open, onClose, stockItem, projectName }) {
           </DialogActions>
         </form>
       </Dialog>
+
+      <CreateClientModal
+        open={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onClientCreated={handleClientCreated}
+        fetchClients={() => {}}
+      />
+
     </ThemeProvider>
   );
 }
