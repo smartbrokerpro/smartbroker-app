@@ -13,10 +13,11 @@ import {
   ImageListItem,
   Switch,
   FormControlLabel,
+  IconButton,
 } from '@mui/material';
 import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
-import { ChevronLeft } from '@mui/icons-material';
+import { ChevronLeft, Delete } from '@mui/icons-material';
 import Link from 'next/link';
 import slugify from 'slugify';
 
@@ -153,6 +154,9 @@ const EditProject = () => {
 
         fetch(`/api/uploadS3?organizationName=${encodeURIComponent(organizationName)}&organizationId=${encodeURIComponent(organizationId)}&projectName=${encodeURIComponent(project.name)}&projectId=${encodeURIComponent(projectId)}`, {
           method: 'POST',
+          headers: {
+            'x-organization-id': session.user.organization._id  // Add this line
+          },
           body: formData,
         })
         .then(response => {
@@ -195,6 +199,18 @@ const EditProject = () => {
         },
       }));
     }
+  };
+
+  const handleDeleteImage = (imageUrl, index) => {
+    setProject(prev => ({
+      ...prev,
+      gallery: prev.gallery.filter((_, i) => i !== index)
+    }));
+    setNotification({ 
+      open: true, 
+      message: 'Imagen eliminada de la galería', 
+      severity: 'success' 
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -437,13 +453,27 @@ const EditProject = () => {
         {project?.gallery && project.gallery.length > 0 && (
           <ImageList sx={{ width: '100%', height: 250, py:2 }} cols={3} rowHeight={164}>
             {project.gallery.map((item, index) => (
-              <ImageListItem key={index}>
+              <ImageListItem key={index} sx={{ position: 'relative' }}>
                 <img
                   src={`${item}?w=164&h=164&fit=crop&auto=format`}
                   srcSet={`${item}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
                   alt={`Gallery image ${index + 1}`}
                   loading="lazy"
                 />
+                <IconButton
+                  sx={{
+                    position: 'absolute',
+                    top: 5,
+                    right: 5,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    },
+                  }}
+                  onClick={() => handleDeleteImage(item, index)}
+                >
+                  <Delete sx={{ color: 'white' }} />
+                </IconButton>
               </ImageListItem>
             ))}
           </ImageList>
