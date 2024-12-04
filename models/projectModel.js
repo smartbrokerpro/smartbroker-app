@@ -18,6 +18,7 @@ const ProjectSchema = new mongoose.Schema(
     },
     gallery: { type: [String] },
     commercialConditions: { type: String },
+    commercialConditionsUpdatedAt: {type: Date},
     organization_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
     delivery_date: { type: Date },
     deliveryDateDescr: { type: String }, 

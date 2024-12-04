@@ -20,6 +20,9 @@ import { useDropzone } from 'react-dropzone';
 import { ChevronLeft, Delete } from '@mui/icons-material';
 import Link from 'next/link';
 import slugify from 'slugify';
+import { Editor } from '@tinymce/tinymce-react';
+import DOMPurify from 'dompurify';
+
 
 const MemoizedAutocomplete = React.memo(Autocomplete);
 
@@ -41,6 +44,8 @@ const EditProject = () => {
 
   // Ref to check if data was already fetched
   const isDataFetched = useRef(false);
+
+  const editorRef = useRef(null);
 
   const fetchInitialData = useCallback(async () => {
     if (!idProject || !session?.user?.organization?._id || isDataFetched.current) return;
@@ -216,6 +221,15 @@ const EditProject = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Get editor content
+      const editorContent = editorRef.current.getContent();
+      
+      // Sanitize HTML content
+      const sanitizedContent = DOMPurify.sanitize(editorContent, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ol', 'ul', 'li'],
+        ALLOWED_ATTR: ['href', 'target']
+      });
+  
       const projectToUpdate = {
         ...project,
         location: project.location ? `${project.location.lat}, ${project.location.lng}` : '',
@@ -224,8 +238,10 @@ const EditProject = () => {
         county_name: selectedCounty?.name,
         county_id: selectedCounty?._id,
         region_name: selectedRegion?.region,
-        region_id: selectedRegion?._id
+        region_id: selectedRegion?._id,
+        commercialConditions: sanitizedContent
       };
+  
       const response = await fetch(`/api/projects/edit/${idProject}`, {
         method: 'PUT',
         headers: { 
@@ -234,6 +250,7 @@ const EditProject = () => {
         },
         body: JSON.stringify(projectToUpdate),
       });
+      
       const data = await response.json();
       if (response.ok && data.success) {
         setNotification({ open: true, message: 'Proyecto actualizado con éxito', severity: 'success' });
@@ -241,6 +258,7 @@ const EditProject = () => {
         throw new Error(data.error || 'Error al actualizar el proyecto');
       }
     } catch (error) {
+      console.error('Error en handleSubmit:', error);
       setNotification({ open: true, message: error.message, severity: 'error' });
     }
   };
@@ -322,17 +340,35 @@ const EditProject = () => {
           onChange={handleRealEstateCompanyChange}
           renderInput={(params) => <TextField {...params} label="Inmobiliaria" margin="normal" required />}
         />
+        <Box sx={{my:2, ml:0}}>
+          <Typography sx={{ml:1}} variant="p" color="initial">Condiciones Comerciales</Typography>
+        
+          <Editor
+            
+            apiKey={process.env.NEXT_PUBLIC_TINY_API_KEY}
+            onInit={(evt, editor) => editorRef.current = editor}
+            value={project?.commercialConditions || ''}
+            init={{
+              height: 300,
+              menubar: false,
+              plugins: ['lists', 'link'],
+              toolbar: 'undo redo | formatselect | ' +
+                ' h4 bold italic ' +
+                ' | bullist numlist | ' + ' | removeformat ',
+              content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+              branding: false,
+              promotion: false
+            }}
+            onEditorChange={(content) => {
+              setProject(prev => ({
+                ...prev,
+                commercialConditions: content
+              }));
+            }}
+          />
+        </Box>
         <TextField
-          fullWidth
-          multiline
-          rows={4}
-          margin="normal"
-          label="Condiciones Comerciales"
-          name="commercialConditions"
-          value={project?.commercialConditions || ''}
-          onChange={handleInputChange}
-        />
-        <TextField
+          sx={{mt:2}}
           fullWidth
           margin="normal"
           label="Tipo de Entrega"

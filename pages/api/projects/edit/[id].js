@@ -58,7 +58,20 @@ export default async function handler(req, res) {
     const db = client.db(process.env.MONGODB_DB);
     const projectsCollection = db.collection('projects');
     const stockCollection = db.collection('stock');
-
+ 
+    // Get current project state
+    const currentProject = await projectsCollection.findOne({ 
+      _id: new ObjectId(id), 
+      organization_id: new ObjectId(organizationId) 
+    });
+ 
+    // Check commercialConditions change
+    if (req.body.commercialConditions !== undefined && 
+        req.body.commercialConditions !== currentProject.commercialConditions) {
+      updateData.commercialConditions = req.body.commercialConditions;
+      updateData.commercialConditionsUpdatedAt = new Date();
+    }
+ 
     const result = await projectsCollection.findOneAndUpdate(
       { 
         _id: new ObjectId(id), 
@@ -67,12 +80,11 @@ export default async function handler(req, res) {
       { $set: updateData },
       { returnDocument: 'after' }
     );
-
+ 
     if (!result) {
       return res.status(404).json({ success: false, message: 'Project not found or not updated' });
     }
-
-    // Update stock documents
+ 
     const stockUpdateResult = await stockCollection.updateMany(
       { 
         project_id: new ObjectId(id),
@@ -102,8 +114,8 @@ export default async function handler(req, res) {
       data: result, 
       stockUpdated: stockUpdateResult.modifiedCount 
     });
-  } catch (error) {
+ } catch (error) {
     console.error('Error updating project:', error);
     res.status(500).json({ success: false, error: error.toString(), stack: error.stack });
-  }
+ }
 }

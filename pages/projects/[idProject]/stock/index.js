@@ -37,6 +37,12 @@ import fitty from 'fitty';
 import InfoBox from '@/components/InfoBox';
 import DocumentsModal from '@/components/DocumentsModal';
 import { DescriptionOutlined } from '@mui/icons-material';  // En vez de FileText de lucide-react
+import parse from 'html-react-parser';
+import moment from 'moment';
+import 'moment/locale/es';
+moment.locale('es');
+import { AutoAwesome } from '@mui/icons-material';
+
 
 export default function StockPage() {
   const router = useRouter();
@@ -59,7 +65,7 @@ export default function StockPage() {
   const containerRef = useRef(null);
   const [openQuotationDialog, setOpenQuotationDialog] = useState(false);
   const [selectedStockItem, setSelectedStockItem] = useState(null);
-  const [openCommercialConditions, setOpenCommercialConditions] = useState(true);
+  const [openCommercialConditions, setOpenCommercialConditions] = useState(false);
   const [openDocuments, setOpenDocuments] = useState(false);
 
   useEffect(() => {
@@ -110,7 +116,7 @@ export default function StockPage() {
 
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
+    setOrder(isAsc ? 'desc' : 'asc');d
     setOrderBy(property);
   };
 
@@ -246,18 +252,64 @@ export default function StockPage() {
       </Box>
 
       {/* Condiciones comerciales */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          onClick={() => setOpenCommercialConditions(!openCommercialConditions)}
-          endIcon={openCommercialConditions ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-          sx={{ textTransform: 'none' }}
-        >
-          <Typography variant="body2">CONDICIONES COMERCIALES</Typography>
-        </Button>
+      <Box sx={{ mb: 2, width:'80%', maxWidth:'720px', minWidth:'360px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Button
+            onClick={() => setOpenCommercialConditions(!openCommercialConditions)}
+            endIcon={openCommercialConditions ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+            sx={{ textTransform: 'none' }}
+          >
+            <Typography variant="body2">CONDICIONES COMERCIALES</Typography>
+            
+            {project?.commercialConditionsUpdatedAt && moment().diff(moment(project.commercialConditionsUpdatedAt), 'hours') < 24 && (
+            
+            <Box 
+                sx={{ 
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6CD63F',
+                  mx: 1,
+                  position: 'relative'
+                }}
+              >
+                <AutoAwesome sx={{ fontSize: 36, position: 'absolute' }} />
+                <Typography 
+                  sx={{ 
+                    fontSize: '0.7rem', 
+                    zIndex: 1,
+                    color: 'black',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  NEW
+                </Typography>
+              </Box>
+            )}
+          </Button>
+          
+          {project?.commercialConditionsUpdatedAt && (
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle:'italic' }}>
+              (Actualizado {moment(project.commercialConditionsUpdatedAt).fromNow()})
+            </Typography>
+          )}
+        </Box>
         <Collapse in={openCommercialConditions}>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            {project?.commercialConditions || 'No hay condiciones comerciales disponibles.'}
-          </Typography>
+          <Box 
+            sx={{ 
+              mt: 1,
+              '& ul, & ol': { pl: 4 },
+              '& p': { mb: 1 },
+              '& h1': { fontSize: '1.8rem', mb: 2 },
+              '& h2': { fontSize: '1.5rem', mb: 1.5 },
+              '& h3': { fontSize: '1.2rem', mb: 1 }
+            }}
+          >
+            {project?.commercialConditions ? 
+              parse(project.commercialConditions) : 
+              'No hay condiciones comerciales disponibles.'
+            }
+          </Box>
         </Collapse>
       </Box>
 
