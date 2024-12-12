@@ -116,7 +116,7 @@ export default function StockPage() {
 
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');d
+    setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
   };
 
