@@ -146,6 +146,10 @@ export default function StockPage() {
 
   return (
     <Box ref={containerRef} sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
+      {loading ? (
+      <LottieLoader message="Cargando datos..." />
+    ) : (
+      <>
       {/* Botón para volver */}
       <Button onClick={() => router.push(`/projects`)} startIcon={<ChevronLeft />} variant="outlined" color="primary">
         Volver a Proyectos
@@ -523,6 +527,8 @@ export default function StockPage() {
         documents={project?.documents || []}
         realEstateCompanyName={project?.realEstateCompanyName}
       />
+      </>
+    )}
     </Box>
   );
 }
