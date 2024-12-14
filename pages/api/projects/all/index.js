@@ -18,7 +18,16 @@ export default async function handler(req, res) {
     const db = client.db(process.env.MONGODB_DB);
 
     const projects = await db.collection('projects').aggregate([
-      { $match: { organization_id: new ObjectId(organizationId) } },
+      { 
+        $match: { 
+          organization_id: new ObjectId(organizationId),
+          $or: [
+            { disabled: false },
+            { disabled: { $exists: false } },
+            { disabled: null }
+          ]
+        } 
+      },
       {
         $lookup: {
           from: 'stock',
