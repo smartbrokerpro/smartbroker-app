@@ -1,5 +1,4 @@
 // pages/api/uploadS3.js
-
 import { S3Client } from '@aws-sdk/client-s3';
 import multer from 'multer';
 import multerS3 from 'multer-s3';
@@ -34,19 +33,16 @@ const ALLOWED_IMAGE_TYPES = {
 };
 
 const sanitizeFilename = (filename) => {
-  // Separar el nombre del archivo de la extensión
   const lastDot = filename.lastIndexOf('.');
   const ext = filename.substring(lastDot);
   const nameWithoutExt = filename.substring(0, lastDot);
 
-  // Sanitizar solo el nombre, manteniendo la extensión original
   const sanitizedName = slugify(nameWithoutExt, { 
     lower: true, 
     strict: true,
     replacement: '-'
   });
 
-  // Reunir el nombre sanitizado con la extensión original
   return `${sanitizedName}${ext}`;
 };
 
@@ -79,32 +75,41 @@ export default async function handler(req, res) {
       });
     }
 
-    // Validar según el tipo de carga
-    if (type === 'documents') {
-      if (!organizationName || !organizationId || !companyName || !companyId) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Se requieren organizationName, organizationId, companyName y companyId para documentos'
-        });
-      }
-    } else {
-      if (!organizationName || !organizationId || !projectName || !projectId) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Se requieren organizationName, organizationId, projectName y projectId para proyectos'
-        });
-      }
-    }
-
     const organizationSlug = slugify(organizationName, { lower: true, strict: true });
-    
     let uploadPath;
-    if (type === 'documents') {
-      const companySlug = slugify(companyName, { lower: true, strict: true });
-      uploadPath = `${organizationSlug}-${organizationId}/${companySlug}-${companyId}/documentos`;
-    } else {
-      const projectSlug = slugify(`${projectName}-${projectId}`, { lower: true, strict: true });
-      uploadPath = `${organizationSlug}-${organizationId}/${projectSlug}/imagenes`;
+
+    // Determinar el path y validar según el tipo
+    switch(type) {
+      case 'avatars':
+        if (!organizationName || !organizationId) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Se requieren organizationName y organizationId para avatares'
+          });
+        }
+        uploadPath = `${organizationSlug}-${organizationId}/users/avatars`;
+        break;
+
+      case 'documents':
+        if (!organizationName || !organizationId || !companyName || !companyId) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Se requieren organizationName, organizationId, companyName y companyId para documentos'
+          });
+        }
+        const companySlug = slugify(companyName, { lower: true, strict: true });
+        uploadPath = `${organizationSlug}-${organizationId}/${companySlug}-${companyId}/documentos`;
+        break;
+
+      default: // Para proyectos y otros casos existentes
+        if (!organizationName || !organizationId || !projectName || !projectId) {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Se requieren organizationName, organizationId, projectName y projectId para proyectos'
+          });
+        }
+        const projectSlug = slugify(`${projectName}-${projectId}`, { lower: true, strict: true });
+        uploadPath = `${organizationSlug}-${organizationId}/${projectSlug}/imagenes`;
     }
 
     console.log('Backend - Upload Path:', uploadPath);
@@ -146,7 +151,6 @@ export default async function handler(req, res) {
         upload.single('file')(req, res, (err) => {
           if (err) {
             if (err instanceof multer.MulterError) {
-              // Error de multer (tamaño, etc.)
               reject({
                 success: false,
                 error: 'Error al subir archivo',
@@ -154,7 +158,6 @@ export default async function handler(req, res) {
                 code: 'MULTER_ERROR'
               });
             } else {
-              // Error de validación de tipo de archivo u otro
               reject({
                 success: false,
                 error: err.message,

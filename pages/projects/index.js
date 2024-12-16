@@ -51,6 +51,8 @@ import { useSession } from 'next-auth/react';
 import { AddHome as AddHomeIcon, AddHomeWork as AddHomeWorkIcon } from '@mui/icons-material';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
 import BoltIcon from '@mui/icons-material/Bolt';
+import { hasPermission } from '@/lib/auth/permissions/helpers';
+import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
 
 const fallbackImage = '/images/fallback.jpg';
 
@@ -304,6 +306,8 @@ const ProjectsPage = () => {
 
   return (
     <Box ref={containerRef} sx={{ maxWidth: 1200, mx: 'auto', mt: 0, mb: 0, p: 4, pb: 0, display: 'flex', flexDirection: 'column', height: '96vh', position: 'relative' }}>
+      
+      {hasPermission(session?.user, 'projects', 'edit') && (
       <SpeedDial
         ariaLabel="Opciones de proyecto"
         sx={{ position: 'fixed', top: '3vh', right: '3vw' }}
@@ -330,7 +334,9 @@ const ProjectsPage = () => {
           tooltipTitle="Carga masiva de stock"
           onClick={() => router.push('/projects/upload')}
         />
-      </SpeedDial>
+      </SpeedDial>  
+      )}
+
       <Box sx={{ py: 4, px: 3, bgcolor: theme.palette.background.default, color: theme.palette.text.primary }}>
         <Typography variant="h4" component="h1" gutterBottom color="primary">Proyectos</Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -449,11 +455,22 @@ const ProjectsPage = () => {
           </>
         )}
       </Box>
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
+        <MenuItem onClick={() => router.push(`/projects/${selectedProject?._id}/stock`)}>
+          <ListItemIcon>
+            <RemoveRedEyeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+            Ver stock
+          </ListItemText>
+        </MenuItem>
+
+        {hasPermission(session?.user, 'projects', 'edit') && (
         <MenuItem onClick={handleEdit}>
           <ListItemIcon>
             <EditIcon fontSize="small" />
@@ -462,6 +479,8 @@ const ProjectsPage = () => {
             Editar proyecto
           </ListItemText>
         </MenuItem>
+        )}
+        {hasPermission(session?.user, 'projects', 'edit') && (
         <MenuItem onClick={() => router.push(`/projects/${selectedProject?._id}/edit-stock`)}>
           <ListItemIcon>
             <EditNoteIcon fontSize="small" />
@@ -470,7 +489,8 @@ const ProjectsPage = () => {
             Editar stock
           </ListItemText>
         </MenuItem>
-        
+        )}
+        {hasPermission(session?.user, 'projects', 'edit') && (
         <MenuItem onClick={() => handleDelete(project)}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" />
@@ -479,8 +499,10 @@ const ProjectsPage = () => {
             Eliminar
           </ListItemText>
         </MenuItem>
+        )}
 
       </Menu>
+      
       {/* <Box sx={{ position: 'sticky', bottom: '1rem', width: '100%', backgroundColor: 'primary.main', borderRadius: '2rem', padding: '1rem', paddingBottom: '1rem', color: '#fff', outline: '4px solid #EEEEEE', boxShadow: '-1px -1px 36px #eeeeee' }}>
         <PromptInput modelName="projects" onSuccess={handlePromptSuccess} />
       </Box> */}

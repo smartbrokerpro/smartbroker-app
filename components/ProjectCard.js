@@ -29,6 +29,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { NumberFormatter } from '@/utils/formatNumber';
 import HolidayVillageOutlinedIcon from '@mui/icons-material/HolidayVillageOutlined';
 import { useSession } from 'next-auth/react';
+import { hasPermission } from '@/lib/auth/permissions/helpers';
 
 const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage, fetchProjects }, ref) => {
   const { data: session } = useSession(); 
@@ -133,6 +134,8 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           sx={{ textAlign: 'left', mt: 1, mr:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem', left: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '0 1rem 1rem 0' }}
         />
           }
+        {hasPermission(session?.user, 'projects', 'edit') && (
+        <>
         <IconButton
           aria-label="more"
           aria-controls="long-menu"
@@ -181,6 +184,8 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
             </ListItemText>
           </MenuItem>
         </Menu>
+        </>
+        )}
       </CardMedia>
       <CardContent>
         {/* Nombre */}

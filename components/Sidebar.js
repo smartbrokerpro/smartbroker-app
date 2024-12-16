@@ -16,7 +16,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PersonIcon from '@mui/icons-material/Person';
 import Image from 'next/image';
+import { ROLES } from '@/lib/auth/permissions/roles';
+import { hasPermission } from '@/lib/auth/permissions/helpers';
 
 const Sidebar = ({ collapsed, onToggle }) => {
   const router = useRouter();
@@ -26,6 +29,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
   const [maxCredits, setMaxCredits] = useState(4000);
   const environment = process.env.NEXT_PUBLIC_ENVIRONMENT;
   const [smartyOpen, setSmaryOpen] = useState(false);
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
 
   useEffect(() => {
     const fetchCredits = async () => {
@@ -47,6 +51,28 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
     fetchCredits();
   }, [session]);
+
+  const canManageUsers = session?.user?.role === 'admin' || 
+  (session?.user?.customPermissions?.users?.view === 1) ||
+  (ROLES[session?.user?.role]?.permissions?.users?.view === 1);
+
+  const handleSettingsClick = (event) => {
+    setSettingsAnchorEl(event.currentTarget);
+  };
+  
+  const handleSettingsClose = () => {
+    setSettingsAnchorEl(null);
+  };
+  
+  const handleNavigateToUsers = () => {
+    router.push('/admin/users');
+    handleSettingsClose();
+  };
+  
+  const handleNavigateToProfile = () => {
+    router.push(`/user/profile/${session?.user?.id}`);
+    handleSettingsClose();
+  };
 
   const handleAlertsClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -279,7 +305,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', mt: 2 }}>
           <Tooltip title="Configuración" placement="top">
-            <IconButton sx={{ color: 'white' }}>
+            <IconButton 
+              sx={{ color: 'white' }} 
+              onClick={handleSettingsClick}
+            >
               <SettingsIcon />
             </IconButton>
           </Tooltip>
@@ -297,13 +326,81 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </Tooltip>
         </Box>
         <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleAlertsClose}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          anchorEl={settingsAnchorEl}
+          open={Boolean(settingsAnchorEl)}
+          onClose={handleSettingsClose}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            sx: {
+              minWidth: '160px',
+              backgroundColor: '#1A1B1C',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              '& .MuiMenuItem-root': {
+                py: 0.5,
+                px: 1.5,
+                fontSize: '0.75rem',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(134, 219, 46, 0.1)',
+                },
+              },
+              '& .MuiListItemIcon-root': {
+                minWidth: '32px',
+                color: '#86DB2E',
+                '& svg': {
+                  fontSize: '1rem'
+                }
+              },
+              '& .MuiDivider-root': {
+                borderColor: '#333333',
+                margin: '4px 0',
+              }
+            }
+          }}
         >
-          <MenuItem onClick={handleAlertsClose}>Sin alertas</MenuItem>
+          <MenuItem onClick={handleNavigateToProfile}>
+            <ListItemIcon>
+              <PersonIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Mi perfil" 
+              primaryTypographyProps={{
+                sx: { 
+                  fontSize: '0.75rem',
+                  fontWeight: 400
+                }
+              }}
+            />
+          </MenuItem>
+          
+          {hasPermission(session?.user, 'users', 'view') && (
+            <>
+              <Divider />
+              <MenuItem onClick={handleNavigateToUsers}>
+                <ListItemIcon>
+                  <GroupIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Administrar usuarios" 
+                  primaryTypographyProps={{
+                    sx: { 
+                      fontSize: '0.75rem',
+                      fontWeight: 400
+                    }
+                  }}
+                />
+              </MenuItem>
+            </>
+          )}
         </Menu>
       </Box>
     </Drawer>

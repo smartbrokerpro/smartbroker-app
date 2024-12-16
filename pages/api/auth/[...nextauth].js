@@ -8,20 +8,32 @@ async function findUserWithOrganization(email) {
   const client = await clientPromise;
   const db = client.db(process.env.MONGODB_DB);
 
-  console.log('Database Name:', db.databaseName);
-  console.log('Connecting to database...');
   console.log('Querying user with email:', email.toLowerCase());
 
-  const user = await db.collection('users').findOne({ email: email.toLowerCase() });
-  console.log('User found:', user);
+  const user = await db.collection('users').findOne({ 
+    email: email.toLowerCase(),
+    active: { $ne: false }
+  }, {
+    projection: {
+      _id: 1,
+      name: 1,
+      email: 1,
+      image: 1,
+      role: 1,
+      permissions: 1,
+      customPermissions: 1,
+      active: 1,
+      organizationId: 1,
+      createdAt: 1,
+      updatedAt: 1
+    }
+  });
 
   if (!user) return null;
 
-  const organizationId = user.organizationId;
-  console.log('Querying organization with id:', organizationId);
-
-  const organization = await db.collection('organizations').findOne({ _id: new ObjectId(organizationId) });
-  console.log('Organization found:', organization);
+  const organization = await db.collection('organizations').findOne({ 
+    _id: new ObjectId(user.organizationId) 
+  });
 
   if (!organization) return null;
 
@@ -59,7 +71,22 @@ const authOptions = {
     },
     async session({ session, token }) {
       if (token && token.user) {
-        session.user = token.user;
+        const freshUserData = await findUserWithOrganization(token.user.email);
+        if (freshUserData) {
+          session.user = {
+            id: freshUserData._id.toString(),
+            name: freshUserData.name,
+            email: freshUserData.email,
+            image: freshUserData.image,
+            organization: freshUserData.organization,
+            permissions: freshUserData.permissions,
+            role: freshUserData.role,
+            active: freshUserData.active,
+            customPermissions: freshUserData.customPermissions,
+            createdAt: freshUserData.createdAt,
+            updatedAt: freshUserData.updatedAt
+          };
+        }
       }
       if (token?.error) {
         session.error = token.error;
@@ -70,12 +97,19 @@ const authOptions = {
       if (account && profile) {
         const userWithOrganization = await findUserWithOrganization(profile.email);
         if (userWithOrganization) {
+          // Pasar todos los campos relevantes
           token.user = {
             id: userWithOrganization._id.toString(),
             name: userWithOrganization.name,
             email: userWithOrganization.email,
+            image: userWithOrganization.image,
             organization: userWithOrganization.organization,
-            permissions: userWithOrganization.permissions
+            permissions: userWithOrganization.permissions,
+            role: userWithOrganization.role,
+            active: userWithOrganization.active,
+            customPermissions: userWithOrganization.customPermissions,
+            createdAt: userWithOrganization.createdAt,
+            updatedAt: userWithOrganization.updatedAt
           };
         } else {
           console.log('User or organization not found');
