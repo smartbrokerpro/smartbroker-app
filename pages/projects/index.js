@@ -250,16 +250,17 @@ const ProjectsPage = () => {
   const filteredProjects = useMemo(() => projects.filter(project => {
     const query = searchQuery.toLowerCase();
     return (
-      (project.name && project.name.toLowerCase().includes(query)) ||
-      (project.address && project.address.toLowerCase().includes(query)) ||
-      (project.typologies && project.typologies.some(typology => typology.toLowerCase().includes(query))) ||
+      (project.name && typeof project.name === 'string' && project.name.toLowerCase().includes(query)) ||
+      (project.address && typeof project.address === 'string' && project.address.toLowerCase().includes(query)) ||
+      (project.typologies && project.typologies.some(typology => typeof typology === 'string' && typology.toLowerCase().includes(query))) ||
       (project.min_price && project.min_price.toString().includes(query)) ||
       (project.max_price && project.max_price.toString().includes(query)) ||
-      (project.real_estate_company.name && project.real_estate_company.name.toLowerCase().includes(query)) ||
-      (project.county.name && project.county.name.toLowerCase().includes(query)) || 
-      (project?.deliveryType && project?.deliveryType.toLowerCase().includes(query))
+      (project.real_estate_company.name && typeof project.real_estate_company.name === 'string' && project.real_estate_company.name.toLowerCase().includes(query)) ||
+      (project.county.name && typeof project.county.name === 'string' && project.county.name.toLowerCase().includes(query)) ||
+      (project.deliveryType && typeof project.deliveryType === 'string' && project.deliveryType.toLowerCase().includes(query))
     );
   }), [projects, searchQuery]);
+  
   
 
   const handleMenuClick = useCallback((event, project) => {
