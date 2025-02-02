@@ -18,7 +18,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import { useRouter } from 'next/router';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -26,21 +28,33 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { NumberFormatter } from '@/utils/formatNumber';
+import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import HolidayVillageOutlinedIcon from '@mui/icons-material/HolidayVillageOutlined';
 import { useSession } from 'next-auth/react';
 import { hasPermission } from '@/lib/auth/permissions/helpers';
+import { NumberFormatter } from '@/utils/formatNumber';
 
-const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImage, fetchProjects }, ref) => {
-  const { data: session } = useSession(); 
+const ProjectCard = React.forwardRef(({ 
+  project, 
+  updatedProjectIds, 
+  fallbackImage, 
+  fetchProjects,
+  onSelect,
+  isSelected,
+  comparisonLimitReached,
+  selectedProjects
+}, ref) => {
+  const { data: session } = useSession();
   const router = useRouter();
   const [anchorEl, setAnchorEl] = useState(null);
   const [tooltipText, setTooltipText] = useState('Click para copiar');
   const [icon, setIcon] = useState(<ContentCopyIcon sx={{ fontSize: 16, mr: 0.5 }} />);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // Estado para manejar la eliminación
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleMenuClick = (event) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
   };
 
@@ -48,20 +62,26 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
     setAnchorEl(null);
   };
 
+  const handleCheckboxChange = (e) => {
+    e.stopPropagation();
+    onSelect(project);
+  };
+
   const handleEdit = () => {
-    router.push(`/projects/${project?._id}/edit`);
+    router.push(`/projects/${project._id}/edit`);
+    handleMenuClose();
   };
 
   const handleDelete = async () => {
-    const organizationId = session?.user?.organization?._id; 
+    const organizationId = session?.user?.organization?._id;
     if (!organizationId) {
       console.error('Organization ID is missing');
       return;
     }
 
-    setIsDeleting(true); // Cambiamos el estado para mostrar el progreso de eliminación
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/projects/delete/${project?._id}`, {
+      const response = await fetch(`/api/projects/delete/${project._id}`, {
         method: 'DELETE',
         headers: {
           'x-organization-id': organizationId,
@@ -69,9 +89,8 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
       });
 
       if (response.ok) {
-        console.log('Proyecto eliminado:', project?._id);
-        fetchProjects(); // Hacemos el refetch de proyectos después de la eliminación
-        setOpenDeleteDialog(false); // Cerramos el diálogo
+        console.log('Proyecto eliminado:', project._id);
+        fetchProjects();
       } else {
         const errorData = await response.json();
         console.error('Error eliminando el proyecto:', errorData);
@@ -79,7 +98,8 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
     } catch (error) {
       console.error('Error en la solicitud:', error);
     } finally {
-      setIsDeleting(false); // Terminamos el estado de eliminación
+      setIsDeleting(false);
+      setOpenDeleteDialog(false);
     }
   };
 
@@ -101,9 +121,48 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
         backgroundColor: updatedProjectIds.includes(project._id) ? 'rgba(0, 255, 0, 0.2)' : 'inherit',
         transition: 'background-color 0.5s ease-in-out',
         mb: 3,
-        position: 'relative'
+        position: 'relative'  // Agregado position relative
       }}
     >
+      {hasPermission(session?.user, 'projects', 'edit') && (
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 8, 
+        left: 8, 
+        zIndex: 2,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        borderRadius: '4px',
+        px: 1 
+      }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isSelected}
+              onChange={handleCheckboxChange}
+              disabled={!isSelected && comparisonLimitReached}
+              sx={{
+                color: 'white',
+                '&.Mui-checked': {
+                  color: 'white',
+                },
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            />
+          }
+          label={
+            <Typography variant="caption" sx={{ color: 'white' }}>
+              {isSelected 
+                ? `${selectedProjects.findIndex(p => p._id === project._id) + 1} de 4`
+                : 'Comparar'
+              }
+            </Typography>
+          }
+        />
+      </Box>
+      )}
+
       <CardMedia
         component="div"
         sx={{
@@ -122,88 +181,74 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           </Box>}
           color="primary"
           variant="contained"
-          sx={{ textAlign: 'right', mt: 1, ml:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem',right: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '1rem 0 0 1rem' }}
+          sx={{ 
+            position: 'absolute',
+            bottom: '.5rem',
+            right: 0, 
+            background: '#68B21Fcc', 
+            fontWeight: 700,
+            color: 'white', 
+            borderRadius: '1rem 0 0 1rem' 
+          }}
         />
         {project?.deliveryType && 
-        <Chip
-          label={<Box display="flex" alignItems="center">
-            {project?.deliveryType || ''}
-          </Box>}
-          color="primary"
-          variant="contained"
-          sx={{ textAlign: 'left', mt: 1, mr:1, fontSize:'.8rem',    position: 'absolute',bottom: '.5rem', left: 0, background: '#68B21Fcc', fontWeight:700 ,color:'white', borderRadius: '0 1rem 1rem 0' }}
-        />
-          }
+          <Chip
+            label={project.deliveryType}
+            color="primary"
+            variant="contained"
+            sx={{ 
+              position: 'absolute',
+              bottom: '.5rem',
+              left: 0, 
+              background: '#68B21Fcc', 
+              fontWeight: 700,
+              color: 'white', 
+              borderRadius: '0 1rem 1rem 0' 
+            }}
+          />
+        }
+
         {hasPermission(session?.user, 'projects', 'edit') && (
-        <>
-        <IconButton
-          aria-label="more"
-          aria-controls="long-menu"
-          aria-haspopup="true"
-          onClick={handleMenuClick}
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            bgcolor: 'rgba(0,0,0,0.6)',
-            color:'white',
-            '&:hover': {
-              color: 'black',
-              bgcolor: 'rgba(255,255,255, 0.6)',
-            }
-          }}
-        >
-          <MoreVertIcon />
-        </IconButton>
-        <Menu
-          id="long-menu"
-          anchorEl={anchorEl}
-          keepMounted
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-          PaperProps={{
-            style: {
-              borderRadius: '8px'
-            }
-          }}
-        >
-          <MenuItem onClick={handleEdit}>
-            <ListItemIcon>
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-              Editar
-            </ListItemText>
-          </MenuItem>
-          <MenuItem onClick={() => setOpenDeleteDialog(true)}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
-              Eliminar
-            </ListItemText>
-          </MenuItem>
-        </Menu>
-        </>
+          <IconButton
+            onClick={handleMenuClick}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              bgcolor: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              '&:hover': {
+                color: 'black',
+                bgcolor: 'rgba(255,255,255, 0.6)',
+              }
+            }}
+          >
+            <MoreVertIcon />
+          </IconButton>
         )}
       </CardMedia>
+
       <CardContent>
-        {/* Nombre */}
         <Box sx={{ mb: 0 }}>
           <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
+            title={<Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              {icon}{tooltipText}
+            </Box>}
             arrow
             placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
           >
             <Typography
               variant="h6"
               component="h2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight:'1.4rem' }}
+              sx={{ 
+                cursor: 'pointer', 
+                display: 'inline-flex', 
+                alignItems: 'center',
+                whiteSpace: 'inherit',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: '1.4rem'
+              }}
               onClick={() => handleCopy(project?.name)}
             >
               {project?.name}
@@ -211,57 +256,75 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
           </Tooltip>
         </Box>
 
-        {/* Nombre de la Inmobiliaria */}
         <Typography
           variant="h6"
           component="h6"
-          sx={{ pt: 0, mt: 0, mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', fontWeight: '300' }}
+          sx={{ 
+            pt: 0,
+            mt: 0,
+            mb: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontSize: '0.75rem',
+            fontWeight: '300'
+          }}
         >
           {project?.real_estate_company.name}
         </Typography>
 
-        {/* Dirección */}
         <Box sx={{ mb: 1 }}>
           <Tooltip
-            title={
-              <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                {icon}{tooltipText}
-              </Box>
-            }
+            title={<Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              {icon}{tooltipText}
+            </Box>}
             arrow
             placement="top"
-            classes={{ popper: 'MuiTooltip-copied' }}
           >
             <Typography
               variant="body2"
-              sx={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', whiteSpace: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              sx={{ 
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                whiteSpace: 'inherit',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
               onClick={() => handleCopy(project?.address)}
             >
-              {project?.address}{project?.county.name && `, ${project?.county.name}.`}
+              {project?.address}
+              {project?.county.name && `, ${project?.county.name}.`}
             </Typography>
           </Tooltip>
         </Box>
 
         {project?.hasStock && (
-          <>
-            <Chip
-              label={
-                <>
-                  <NumberFormatter value={project?.min_price} decimals={0} /> - <NumberFormatter value={project?.max_price} decimals={0} /> UF
-                </>
-              }
-              color="primary"
-              variant="outlined"
-              sx={{ textAlign: 'right' }}
-            />
-          </>
+          <Chip
+            label={
+              <>
+                <NumberFormatter value={project?.min_price} decimals={0} /> - 
+                <NumberFormatter value={project?.max_price} decimals={0} /> UF
+              </>
+            }
+            color="primary"
+            variant="outlined"
+            sx={{ textAlign: 'right' }}
+          />
         )}
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
           {project?.typologies.map((typology, index) => (
-            <Chip key={index} label={typology} color="secondary" variant="outlined" size="small" />
+            <Chip 
+              key={index} 
+              label={typology} 
+              color="secondary" 
+              variant="outlined" 
+              size="small" 
+            />
           ))}
         </Box>
+
         <Box sx={{ m: 2, display: 'flex', justifyContent: 'center' }}>
           <Button
             color="primary"
@@ -279,7 +342,51 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
         </Box>
       </CardContent>
 
-      {/* Diálogo de confirmación de eliminación */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => router.push(`/projects/${project?._id}/stock`)}>
+          <ListItemIcon>
+            <RemoveRedEyeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+            Ver stock
+          </ListItemText>
+        </MenuItem>
+
+        {hasPermission(session?.user, 'projects', 'edit') && [
+          <MenuItem key="edit" onClick={handleEdit}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+              Editar proyecto
+            </ListItemText>
+          </MenuItem>,
+          
+          <MenuItem key="edit-stock" onClick={() => router.push(`/projects/${project?._id}/edit-stock`)}>
+            <ListItemIcon>
+              <EditNoteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+              Editar stock
+            </ListItemText>
+          </MenuItem>,
+          
+          <MenuItem key="delete" onClick={() => setOpenDeleteDialog(true)}>
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primaryTypographyProps={{ fontSize: '0.875rem' }}>
+              Eliminar
+            </ListItemText>
+          </MenuItem>
+        ]}
+
+      </Menu>
+
       <Dialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}
@@ -287,7 +394,8 @@ const ProjectCard = React.forwardRef(({ project, updatedProjectIds, fallbackImag
         <DialogTitle>Confirmar eliminación</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            ¿Estás seguro de que deseas eliminar el proyecto {project?.name}? Esta acción borrará también el stock asociado al proyecto y no se puede deshacer.
+            ¿Estás seguro de que deseas eliminar el proyecto {project?.name}? 
+            Esta acción borrará también el stock asociado al proyecto y no se puede deshacer.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

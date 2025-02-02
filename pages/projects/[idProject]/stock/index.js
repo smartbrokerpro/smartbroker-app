@@ -529,6 +529,7 @@ export default function StockPage() {
       />
       </>
     )}
+    
     </Box>
   );
 }

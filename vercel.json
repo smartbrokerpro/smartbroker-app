@@ -1,0 +1,9 @@
+{
+    "crons": [
+      {
+        "path": "/api/updateUF",
+        "schedule": "0 7 * * *"
+      }
+    ]
+  }
+  

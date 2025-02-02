@@ -53,11 +53,15 @@ import DomainAddIcon from '@mui/icons-material/DomainAdd';
 import BoltIcon from '@mui/icons-material/Bolt';
 import { hasPermission } from '@/lib/auth/permissions/helpers';
 import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
+import CloseIcon from '@mui/icons-material/Close';
+import CompareModal from '@/components/CompareModal';
 
 const fallbackImage = '/images/fallback.jpg';
 
 const ProjectsPage = () => {
+  const MAX_COMPARISONS = 4;
   const { data: session, status } = useSession(); 
+  const [selectedProjects, setSelectedProjects] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatePrompt, setUpdatePrompt] = useState('');
@@ -81,9 +85,24 @@ const ProjectsPage = () => {
   const containerRef = useRef(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); 
+  const [openCompareModal, setOpenCompareModal] = useState(false);
+
+
+  const handleProjectSelect = (project) => {
+    setSelectedProjects((prev) => {
+      const isSelected = prev.some((p) => p._id === project._id);
+      if (isSelected) {
+        return prev.length === 1 ? [] : prev.filter((p) => p._id !== project._id);
+      }
+      if (prev.length < MAX_COMPARISONS) {
+        return [...prev, project];
+      }
+      return prev;
+    });
+  };
   
-  // Función para confirmar eliminación
   
+
   useEffect(() => {
     if (status === 'authenticated') {
       console.log('Usuario autenticado, fetching proyectos...');
@@ -106,6 +125,10 @@ const ProjectsPage = () => {
       }
     }
   }, [updatedProjectIds, projects]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const fetchProjects = useCallback(async () => {
     console.log('Fetching proyectos para la organización:', session.user.organization._id);
@@ -369,18 +392,42 @@ const ProjectsPage = () => {
           </Box>
         )}
         {viewMode === 'grid' ? (
+          <>
+           <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+            <Pagination
+              count={Math.ceil(filteredProjects.length / rowsPerPage)}
+              page={page}
+              onChange={handleChangePage}
+              color="primary"
+            />
+          </Box>
           <Grid container spacing={4}>
-            {filteredProjects.map(project => (
-              <Grid item key={project._id} xs={12} sm={6} md={4}>
-                <ProjectCard
-                  project={project}
-                  updatedProjectIds={updatedProjectIds}
-                  fallbackImage={fallbackImage}
-                  fetchProjects={fetchProjects}  // Aquí pasamos la función de refetch
-                />
-              </Grid>
+            {filteredProjects
+              .slice((page - 1) * rowsPerPage, page * rowsPerPage)
+              .map(project => (
+                <Grid item key={project._id} xs={12} sm={6} md={4}>
+                  <ProjectCard
+                    project={project}
+                    updatedProjectIds={updatedProjectIds}
+                    fallbackImage={fallbackImage}
+                    fetchProjects={fetchProjects}
+                    onSelect={handleProjectSelect}
+                    isSelected={selectedProjects.some(p => p._id === project._id)}
+                    comparisonLimitReached={selectedProjects.length >= MAX_COMPARISONS}
+                    selectedProjects={selectedProjects}
+                  />
+                </Grid>
             ))}
           </Grid>
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2, pb:12 }}>
+            <Pagination
+              count={Math.ceil(filteredProjects.length / rowsPerPage)}
+              page={page}
+              onChange={handleChangePage}
+              color="primary"
+            />
+          </Box>
+        </>
         
         ) : (
           <>
@@ -537,6 +584,119 @@ const ProjectsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      
+      {selectedProjects.length > 0 && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 20,
+            left: collapsed ? '112px' : '290px',
+            right: 20,
+            width: 'auto',
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            boxShadow: 3,
+            p: {xs: 1, sm: 2},
+            display: 'flex',
+            flexDirection: {xs: 'column', sm: 'row'},
+            gap: 2,
+            alignItems: 'center',
+            border: '1px solid',
+            borderColor: 'divider',
+            zIndex: 1000
+          }}
+        >
+          <Box sx={{ 
+            flex: 1,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 1,
+            width: 'calc(100% - 120px)',
+            mr: 2,
+          }}>
+            {[...Array(MAX_COMPARISONS)].map((_, index) => (
+              <Box  
+                key={index}
+                sx={{
+                  flex: '1 1 0',
+                  minWidth: {xs: '140px', sm: '160px'},
+                  maxWidth: {xs: '45%', sm: '23%'},
+                  height: {xs: 80, sm: 90},
+                  border: '2px dashed',
+                  borderColor: selectedProjects[index] ? 'primary.main' : 'divider',
+                  borderRadius: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: selectedProjects[index] ? 'action.hover' : 'background.default',
+                  position: 'relative'
+                }}
+              >
+                {selectedProjects[index] && (
+                  <>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleProjectSelect(selectedProjects[index])}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        p: 0.5,
+                        bgcolor: 'background.paper',
+                        '&:hover': {
+                          bgcolor: 'error.light',
+                          color: 'white'
+                        }
+                      }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                    <Box sx={{ p: 1, width: '100%', textAlign: 'center' }}>
+                      <Typography variant="subtitle2" noWrap>
+                        {selectedProjects[index].name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                        {selectedProjects[index].real_estate_company.name}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+              </Box>
+            ))}
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant="contained"
+              disabled={selectedProjects.length < 2}
+              onClick={() => setOpenCompareModal(true)}
+            >
+              Comparar
+            </Button>
+            <Typography
+              variant="caption"
+              color="primary"
+              sx={{ 
+                mt:1,
+                cursor: 'pointer', 
+                '&:hover': { 
+                  textDecoration: 'underline' 
+                } 
+              }}
+              onClick={() => setSelectedProjects([])}
+            >
+              Limpiar
+            </Typography>
+          </Box>
+
+          <CompareModal 
+            open={openCompareModal}
+            onClose={() => setOpenCompareModal(false)}
+            selectedProjects={selectedProjects}
+            session={session}
+          />
+        </Box>
+      )}
 
 
     </Box>
