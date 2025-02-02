@@ -419,14 +419,29 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    <TableRow>
+
+                  <TableRow sx={{ display: 'none', '@media print': { display: 'table-row' } }}>
+                        <TableCell sx={{ textAlign: 'center' }}>Orientación</TableCell>
+                        {selectedProjects.map((project) => {
+                            const unit = getSelectedUnit(project._id);
+                            return (
+                                <TableCell key={project._id} sx={{ textAlign: 'center' }}>
+                                    {unit ? unit.orientation : '-'}
+                                </TableCell>
+                            );
+                        })}
+                    </TableRow>
+
+
+                    {/* <TableRow>
                       <TableCell sx={{ textAlign: 'center' }}>Comuna</TableCell>
                       {selectedProjects.map((project) => (
                         <TableCell key={project._id} sx={{ textAlign: 'center' }}>
                           {getSelectedUnit(project._id)?.county_name || '-'}
                         </TableCell>
                       ))}
-                    </TableRow>
+                    </TableRow> */}
+
                     <TableRow>
                       <TableCell sx={{ textAlign: 'center' }}>Superficie</TableCell>
                       {selectedProjects.map((project) => {
