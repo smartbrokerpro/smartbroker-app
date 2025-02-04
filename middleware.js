@@ -3,17 +3,17 @@ import { NextResponse } from "next/server";
 import { hasPermission } from '@/lib/auth/permissions';
 
 export async function middleware(req) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const { pathname } = req.nextUrl;
-  const userAgent = req.headers.get("user-agent") || "";
 
+  // Debug logs
   console.log('\n--- Middleware Debug ---');
   console.log('Pathname:', pathname);
-  console.log('User-Agent:', userAgent);
-
-  // Permitir acceso sin restricciones si la solicitud proviene del cron job de Vercel
-  if (userAgent.includes("vercel-cron")) {
-    console.log("Solicitud desde Vercel Cron, permitiendo acceso sin autenticación");
-    return NextResponse.next();
+  console.log('Token structure:', JSON.stringify(token, null, 2));
+  if (token?.user) {
+    console.log('User in token:', JSON.stringify(token.user, null, 2));
+    console.log('User role:', token.user.role);
+    console.log('User permissions:', token.user.permissions);
   }
 
   // Rutas públicas o que no requieren verificación
@@ -26,14 +26,11 @@ export async function middleware(req) {
     pathname.startsWith("/api/projects") ||
     pathname.startsWith("/api/gpt/projects-gpt-handler") || 
     pathname.startsWith("/api/gpt/[model]-gpt-handler") ||
-    pathname.startsWith("/api/updateUF") // Permitir acceso público a esta ruta
+    pathname.startsWith("/api/updateUF")
   ) {
-    console.log('Ruta pública, permitiendo acceso:', pathname);
+    console.log('Ruta pública, permitiendo acceso');
     return NextResponse.next();
   }
-
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  console.log('Token:', JSON.stringify(token, null, 2));
 
   // Verificación de autenticación
   if (!token) {
@@ -48,14 +45,23 @@ export async function middleware(req) {
 
   // Mapeo de rutas a permisos requeridos
   const routePermissions = {
+    // Usuarios
     '/admin/users': { module: 'users', action: 'view' },
     '/api/users': { module: 'users', action: 'view' },
+    
+    // Proyectos
     '/projects/create': { module: 'projects', action: 'create' },
     '/projects/edit': { module: 'projects', action: 'edit' },
+    
+    // Cotizaciones
     '/quotations/new': { module: 'quotations', action: 'create' },
     '/quotations/edit': { module: 'quotations', action: 'edit' },
+    
+    // Reportes
     '/reports': { module: 'reports', action: 'view' },
     '/reports/export': { module: 'reports', action: 'export' },
+
+    // Inventario
     '/inventory': { module: 'inventory', action: 'view' },
     '/inventory/edit': { module: 'inventory', action: 'edit' },
   };
