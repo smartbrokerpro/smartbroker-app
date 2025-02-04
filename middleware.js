@@ -25,7 +25,8 @@ export async function middleware(req) {
     pathname.startsWith("/images/") ||
     pathname.startsWith("/api/projects") ||
     pathname.startsWith("/api/gpt/projects-gpt-handler") || 
-    pathname.startsWith("/api/gpt/[model]-gpt-handler")
+    pathname.startsWith("/api/gpt/[model]-gpt-handler") ||
+    pathname.startsWith("/api/updateUF")
   ) {
     console.log('Ruta pública, permitiendo acceso');
     return NextResponse.next();
