@@ -1,11 +1,9 @@
 {
-  "crons": [
-    {
-      "path": "/api/updateUF",
-      "schedule": "0 5 * * *",
-      "headers": {
-        "x-vercel-protection-bypass": "@VERCEL_AUTOMATION_BYPASS_SECRET"
+    "crons": [
+      {
+        "path": "/api/updateUF",
+        "schedule": "0 5 * * *"
       }
-    }
-  ]
-}
+    ]
+  }
+  
