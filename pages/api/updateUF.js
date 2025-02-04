@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     if (existeUF) {
       console.log("La UF ya está guardada, no se inserta nuevamente.");
-      return res.status(200).json({ message: "UF ya guardada", data: existeUF });
+      return res.status(204).json({ message: "UF ya guardada", data: existeUF });
     }
 
     // Insertar un nuevo registro si no existe
