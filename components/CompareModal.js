@@ -1,7 +1,6 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
-import { Modal, Box, Table, TableContainer, TableHead, TableBody, TableRow, TableCell, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Button, TextField } from '@mui/material';
-import { useReactToPrint } from 'react-to-print';
+import { Modal, Box, Table, TableContainer, TableHead, TableBody, TableRow, TableCell, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Button, TextField, Snackbar, Alert } from '@mui/material';import { useReactToPrint } from 'react-to-print';
 import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import { format } from 'date-fns';
@@ -29,21 +28,27 @@ const ProjectHeader = ({ project, state, setState, getSelectedUnit, handleTypolo
       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
         {project.name}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {getSelectedUnit(project._id)?.county_name || '-'}
-      </Typography>
-      
-      <PrintableProjectInfo 
-        selectedUnit={getSelectedUnit(project._id)}
-        selectedTypology={state.selectedTypology[project._id]}
-      />
-
-      <ProjectSelectors 
-        project={project}
-        state={state}
-        setState={setState}
-        handleTypologyChange={handleTypologyChange}
-      />
+      {state.projectErrors[project._id] ? (
+        <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+          Error al cargar datos
+        </Typography>
+      ) : (
+        <>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {getSelectedUnit(project._id)?.county_name || '-'}
+          </Typography>
+          <PrintableProjectInfo 
+            selectedUnit={getSelectedUnit(project._id)}
+            selectedTypology={state.selectedTypology[project._id]}
+          />
+          <ProjectSelectors 
+            project={project}
+            state={state}
+            setState={setState}
+            handleTypologyChange={handleTypologyChange}
+          />
+        </>
+      )}
     </Box>
   </TableCell>
 );
@@ -261,9 +266,11 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
     selectedUnit: {},
     loading: true,
     ufValue: null,
-    tasaAnual: 4.0,
-    plazoAnos: 25
-  });
+    tasaAnual: 4.5,
+    plazoAnos: 25,
+    projectErrors: {},
+    errorMessage: ''
+});
 
   const printComponentRef = useRef(null);
   const handlePrint = useReactToPrint({
@@ -298,7 +305,8 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
   };
 
   const getProjectDetails = (projectId) => {
-    return state.projectDetails.find(detail => detail._id === projectId);
+    if (state.projectErrors[projectId]) return null;
+    return state.projectDetails?.find(detail => detail?._id === projectId);
   };
 
   const handleTypologyChange = (projectId, value) => {
@@ -321,55 +329,65 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
   useEffect(() => {
     const fetchData = async () => {
       if (!open || selectedProjects.length === 0) return;
-      setState(prev => ({ ...prev, loading: true }));
+      setState(prev => ({ ...prev, loading: true, projectErrors: {}, errorMessage: '' }));
 
       try {
-        const [ufResponse, ...projectResponses] = await Promise.all([
-          fetch("/api/getUF"),
-          ...selectedProjects.map(project => 
-            fetch(`/api/projects/details/${project._id}?organizationId=${session.user.organization._id}`)
-          )
-        ]);
-
+        const ufResponse = await fetch("/api/getUF");
         const ufData = await ufResponse.json();
         const ufValue = parseFloat(ufData.UFs[0].Valor.replace(".", "").replace(",", "."));
-
-        const projectDetailsData = await Promise.all(
-          projectResponses.map(async response => {
-            const data = await response.json();
-            return data.data;
-          })
-        );
 
         const units = {};
         const typologies = {};
         const selectedUnits = {};
+        const projectErrors = {};
+        const projectDetails = [];
+        let hasErrors = false;
 
         for (const project of selectedProjects) {
-          const response = await fetch(`/api/projects/${project._id}/stock?organizationId=${session.user.organization._id}`);
-          const data = await response.json();
-          units[project._id] = data.data;
-
-          if (data.data.length > 0) {
-            const projectTypologies = [...new Set(data.data.map(u => u.typology))].sort();
-            typologies[project._id] = projectTypologies[0];
-            const firstUnitOfTypology = data.data.find(u => u.typology === projectTypologies[0]);
-            selectedUnits[project._id] = firstUnitOfTypology?._id;
+          try {
+            const [detailsResponse, stockResponse] = await Promise.all([
+              fetch(`/api/projects/details/${project._id}?organizationId=${session.user.organization._id}`),
+              fetch(`/api/projects/${project._id}/stock?organizationId=${session.user.organization._id}`)
+            ]);
+        
+            const detailsData = await detailsResponse.json();
+            const stockData = await stockResponse.json();
+        
+            projectDetails.push(detailsData.data);
+            units[project._id] = stockData.data;
+        
+            if (stockData.data.length > 0) {
+              const projectTypologies = [...new Set(stockData.data.map(u => u.typology))].sort();
+              typologies[project._id] = projectTypologies[0];
+              const firstUnitOfTypology = stockData.data.find(u => u.typology === projectTypologies[0]);
+              selectedUnits[project._id] = firstUnitOfTypology?._id;
+            }
+          } catch (error) {
+            console.error(`Error loading project ${project.name}:`, error);
+            projectErrors[project._id] = true;
+            projectDetails.push(null); // Agregamos null para mantener el índice sincronizado
+            hasErrors = true;
           }
         }
 
         setState(prev => ({
           ...prev,
-          projectDetails: projectDetailsData,
+          projectDetails,
           projectUnits: units,
           selectedTypology: typologies,
           selectedUnit: selectedUnits,
           ufValue,
+          projectErrors,
+          errorMessage: hasErrors ? 'Algunos proyectos no pudieron ser cargados correctamente' : '',
           loading: false
         }));
       } catch (error) {
         console.error("Error fetching data:", error);
-        setState(prev => ({ ...prev, loading: false }));
+        setState(prev => ({ 
+          ...prev, 
+          loading: false,
+          errorMessage: 'Error al cargar los datos'
+        }));
       }
     };
 
@@ -448,15 +466,22 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
                         const unit = getSelectedUnit(project._id);
                         return (
                           <TableCell key={project._id} sx={{ textAlign: 'center' }}>
-                            <Typography variant="body2">
-                              Total: {unit ? `${unit.total_surface}m²` : '-'}
-                            </Typography>
-                            <Typography variant="body2">
-                              Interior: {unit ? `${unit.interior_surface}m²` : '-'}
-                            </Typography>
-                            <Typography variant="body2">
-                              Terraza: {unit ? `${unit.terrace_surface}m²` : '-'}
-                            </Typography>
+                            {unit?.total_surface !== undefined && (
+                              <Typography variant="body2">
+                                Total: {`${unit.total_surface.toFixed(2)}m²`}
+                              </Typography>
+                            )}
+                            {unit?.interior_surface !== undefined && (
+                              <Typography variant="body2">
+                                Interior: {`${unit.interior_surface.toFixed(2)}m²`}
+                              </Typography>
+                            )}
+                            {unit?.terrace_surface !== undefined && (
+                              <Typography variant="body2">
+                                Terraza: {`${unit.terrace_surface.toFixed(2)}m²`}
+                              </Typography>
+                            )}
+                            {(!unit?.total_surface && !unit?.interior_surface && !unit?.terrace_surface) && '-'}
                           </TableCell>
                         );
                       })}
@@ -533,6 +558,32 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
                           {`${(extractPercentage(getProjectDetails(project._id)?.commercialConditions, 'Bono Pie', 0) * 100).toFixed(1)}%`}
                         </TableCell>
                       ))}
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ textAlign: 'center' }}>Descuento</TableCell>
+                        {selectedProjects.map((project) => {
+                            const details = getProjectDetails(project._id);
+                            const unit = getSelectedUnit(project._id);
+                            if (!unit || !details) return <TableCell key={project._id}>-</TableCell>;
+                            
+                            const discount = details.discount || 0;
+                            if (discount === 0) return <TableCell key={project._id} sx={{ textAlign: 'center' }}>-</TableCell>;
+
+                            const discountUF = (unit.current_list_price * discount) / 100;
+                            const discountCLP = discountUF * state.ufValue;
+                            
+                            return (
+                                <TableCell key={project._id} sx={{ textAlign: 'center' }}>
+                                    {`${discount}%`}
+                                    <Typography variant="body2">
+                                        {`${discountUF.toFixed(1)} UF`}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {`$${Math.round(discountCLP).toLocaleString('es-CL')}`}
+                                    </Typography>
+                                </TableCell>
+                            );
+                        })}
                     </TableRow>
                     <TableRow>
                         <TableCell sx={{ textAlign: 'center' }}>Cuotón</TableCell>
