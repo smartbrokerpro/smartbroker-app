@@ -397,7 +397,7 @@ const ProjectQuickEditor = () => {
                 {columnVisibility.storageValue && (
                   <TableCell>Valor Bodega</TableCell>
                 )}
-                {columnVisibility.storageValue && (
+                {columnVisibility.reservationValue && (
                   <TableCell>Valor Reserva</TableCell>
                 )}
                 <TableCell>Acciones</TableCell>
