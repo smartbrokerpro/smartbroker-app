@@ -280,3 +280,110 @@ export const ActionButtons = ({ handlePrint, onClose, loading }) => (
     </Button>
   </Box>
 );
+
+export const calculateComparativaDividendos = (hipotecarioUF, tasaAnual, plazoActual, ufValue) => {
+    const getPlazosToShow = (plazo) => {
+      // Si es 5 años o menos
+      if (plazo <= 5) return [5, 10, 15];
+      // Si es 30 años
+      if (plazo >= 30) return [20, 25, 30];
+      // Caso normal: plazo anterior, actual y siguiente
+      return [plazo - 5, plazo, plazo + 5];
+    };
+  
+    const plazos = getPlazosToShow(plazoActual);
+    
+    return plazos.map(plazo => {
+      const dividendo = calculateDividendo(hipotecarioUF, tasaAnual, plazo, ufValue);
+      return {
+        plazo,
+        dividendoUF: dividendo.dividendoUF,
+        dividendoCLP: dividendo.dividendoCLP,
+        isSelected: plazo === plazoActual
+      };
+    });
+  };
+
+  export const ComparativaDividendos = ({ hipotecarioUF, tasaAnual, plazoActual, ufValue }) => {
+    const comparativa = calculateComparativaDividendos(hipotecarioUF, tasaAnual, plazoActual, ufValue);
+  
+    return (
+      <TableCell sx={{ textAlign: 'center' }}>
+        <Table size="small" sx={{ 
+          display: 'none',
+          '@media print': { 
+            display: 'table',
+            margin: '0 auto',
+            width: 'auto',
+            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+            borderCollapse: 'separate',
+            borderSpacing: '0',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }
+        }}>
+          <TableBody>
+            {comparativa.map(({ plazo, dividendoUF, dividendoCLP, isSelected }, index) => (
+              <TableRow key={plazo} sx={{
+                backgroundColor: isSelected ? 'white' : 'transparent',
+                '&:first-of-type td:first-of-type': {
+                  borderTopLeftRadius: '4px',
+                },
+                '&:first-of-type td:last-child': {
+                  borderTopRightRadius: '4px',
+                },
+                '&:last-child td:first-of-type': {
+                  borderBottomLeftRadius: '4px',
+                },
+                '&:last-child td:last-child': {
+                  borderBottomRightRadius: '4px',
+                }
+              }}>
+                <TableCell sx={{ 
+                  py: 0.5,
+                  px: 1,
+                  textAlign: 'right',
+                  fontSize: '0.7rem',
+                  whiteSpace: 'nowrap',
+                  borderBottom: index < 2 ? '1px solid rgba(224, 224, 224, 0.4)' : 'none',
+                  borderRight: '1px solid rgba(224, 224, 224, 0.4)',
+                  fontWeight: isSelected ? 'bold' : 'normal'
+                }}>
+                  <Typography sx={{ 
+                    fontSize: '0.75rem',
+                    fontWeight: 'inherit',
+                    display: 'block',
+                    lineHeight: 1.2
+                  }}>
+                    {dividendoUF.toFixed(1)} UF
+                  </Typography>
+                  <Typography sx={{ 
+                    fontSize: '0.65rem',
+                    color: 'text.secondary',
+                    display: 'block',
+                    lineHeight: 1.2,
+                    fontWeight: 'normal'
+                  }}>
+                    ${Math.round(dividendoCLP).toLocaleString('es-CL')}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={{ 
+                  py: 0.5,
+                  px: 1,
+                  textAlign: 'left',
+                  fontSize: '0.7rem',
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                  width: '1%',
+                  borderBottom: index < 2 ? '1px solid rgba(224, 224, 224, 0.4)' : 'none',
+                  fontWeight: isSelected ? 'bold' : 'normal'
+                }}>
+                  {plazo} años
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCell>
+    );
+  };

@@ -8,7 +8,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { calculatePriceInfo, calculateDividendo, formatSurface, TableCellContent, TableFooterControls, ActionButtons, OrganizationHeader, ProjectHeader, extractPercentage } from '@/utils/compareUtils';
+import { calculatePriceInfo, calculateDividendo, formatSurface, TableCellContent, TableFooterControls, ActionButtons, OrganizationHeader, ProjectHeader, ComparativaDividendos, calculateComparativaDividendos } from '@/utils/compareUtils';
 import { Editor } from '@tinymce/tinymce-react';
 import DOMPurify from 'dompurify';
 
@@ -649,6 +649,8 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
                   })}
               </TableRow>
 
+              
+
               <TableRow sx={{ '@media print': { display: 'none' } }}>
                 <TableCell sx={{ textAlign: 'center' }}>
                     Aplicar condiciones comerciales
@@ -956,6 +958,51 @@ const CompareModal = ({ open, onClose, selectedProjects, session }) => {
                                 {state.plazoAnos} años
                             </TableCell>
                         ))}
+                    </TableRow>
+
+                    <TableRow sx={{ 
+                        display: 'none', 
+                        '@media print': { 
+                            display: 'table-row',
+                            bgcolor: '#f5f5f5' 
+                        }
+                    }}>
+                        <TableCell sx={{ 
+                            fontWeight: 'bold', 
+                            color: 'primary.main', 
+                            textAlign: 'center'
+                        }}>
+                            Dividendo por Plazos
+                        </TableCell>
+                        {selectedProjects.map((project) => {
+                            const unit = getSelectedUnit(project._id);
+                            const details = getProjectDetails(project._id);
+                            if (!unit || !details) return <TableCell key={project._id}>-</TableCell>;
+                            
+                            const piePercentage = unit.downpayment ?? details.downpayment ?? 20;
+                            const bonoPiePercentage = unit.down_payment_bonus ?? details.down_payment_bonus ?? 0;
+                            const descuentoPercentage = unit.discount ?? details.discount ?? 0;
+                            
+                            const priceInfo = calculatePriceInfo(
+                                unit, 
+                                state.ufValue, 
+                                Number(piePercentage),
+                                Number(piePercentage),
+                                state.discountType[project._id],
+                                Number(bonoPiePercentage),
+                                Number(descuentoPercentage)
+                            );
+                            
+                            return (
+                                <ComparativaDividendos
+                                    key={project._id}
+                                    hipotecarioUF={priceInfo.hipotecarioUF}
+                                    tasaAnual={state.tasaAnual}
+                                    plazoActual={state.plazoAnos}
+                                    ufValue={state.ufValue}
+                                />
+                            );
+                        })}
                     </TableRow>
                     {/* FIN Nuevas filas solo para impresión */}
 
