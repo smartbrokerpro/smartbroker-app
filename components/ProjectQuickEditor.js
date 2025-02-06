@@ -48,6 +48,7 @@ const ProjectQuickEditor = () => {
     deliveryType: true,
     parkingValue: true,
     storageValue: true,
+    reservationValue: true
   });
   const [page, setPage] = useState(1);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -65,6 +66,7 @@ const ProjectQuickEditor = () => {
     deliveryType: 'Tipo de Entrega',
     parkingValue: 'Valor Estacionamiento',
     storageValue: 'Valor Bodega',
+    reservationValue: 'Valor Reserva'
   };
 
   const fetchProjects = useCallback(async (organizationId) => {
@@ -220,6 +222,7 @@ const ProjectQuickEditor = () => {
       downpayment: project.downpayment,
       parkingValue: project.parkingValue,
       storageValue: project.storageValue,
+      reservationValue: project.reservationValue
     };
 
     try {
@@ -393,6 +396,9 @@ const ProjectQuickEditor = () => {
                 )}
                 {columnVisibility.storageValue && (
                   <TableCell>Valor Bodega</TableCell>
+                )}
+                {columnVisibility.storageValue && (
+                  <TableCell>Valor Reserva</TableCell>
                 )}
                 <TableCell>Acciones</TableCell>
               </TableRow>
@@ -579,6 +585,21 @@ const ProjectQuickEditor = () => {
                         value={project.storageValue || ''}
                         onChange={(e) =>
                           handleInputChange(project._id, 'storageValue', parseFloat(e.target.value))
+                        }
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </TableCell>
+                  )}
+                  {columnVisibility.reservationValue && (
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        sx={{ width: '100px' }}
+                        value={project.reservationValue || ''}
+                        onChange={(e) =>
+                          handleInputChange(project._id, 'reservationValue', parseFloat(e.target.value))
                         }
                         InputProps={{
                           inputProps: { min: 0, step: 0.01 }

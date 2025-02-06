@@ -118,7 +118,8 @@ export const getProjects = async (req, res) => {
           downpayment: 1,
           deliveryType: 1,
           storageValue: 1,
-          parkingValue: 1
+          parkingValue: 1,
+          reservationValue:1
         }
       },
       {
